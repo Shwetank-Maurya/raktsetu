@@ -33,3 +33,6 @@ backend/artifacts/
 
 prompt-944c7-firebase-adminsdk-fbsvc-aed2028dd1.json
 prompt-944c7-firebase-adminsdk-fbsvc-e4d7f7b735.json
+
+# build caches
+*.tsbuildinfo

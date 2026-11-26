@@ -1,7 +1,7 @@
 // Public (signed-out) chrome: one thin header and a one-line footer. Nothing else.
 import { Link, NavLink, Outlet } from "react-router-dom";
 import clsx from "clsx";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { Logo } from "./Layout";
 
 export default function PublicLayout() {

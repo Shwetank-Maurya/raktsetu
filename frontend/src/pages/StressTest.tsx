@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import MapView from "../components/MapView";
 import { Button, Card, ErrorBox, SevBadge, Spinner, Stat } from "../components/ui";
 import { COMP_LABEL, SEV, hrs, pct, type Sev } from "../lib/format";
 import { track } from "../lib/firebase";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { useNetworkCenter } from "../lib/region";
 
 export default function StressTest() {
@@ -16,10 +17,10 @@ export default function StressTest() {
   const [casualties, setCasualties] = useState(40);
   const [hours, setHours] = useState(12);
   const [crit, setCrit] = useState(20);
-  const geo = useQuery({ queryKey: ["map", "risk"], queryFn: () => api.get("/api/map/risk") });
-  const assumptions = useQuery({ queryKey: ["assumptions"], queryFn: () => api.get("/api/simulate/assumptions") });
+  const geo = useQuery({ queryKey: ["map", "risk"], queryFn: endpoints.mapRisk });
+  const assumptions = useQuery({ queryKey: ["assumptions"], queryFn: endpoints.incidentAssumptions });
   const sim = useMutation({
-    mutationFn: () => api.read("/api/simulate/incident", {
+    mutationFn: () => endpoints.simulateIncident({
       lat: pick![0], lng: pick![1], casualties, hours, radius_km: 25,
       severity_mix: { critical: crit / 100, serious: Math.max(0, (100 - crit) * 0.4) / 100, minor: Math.max(0, (100 - crit) * 0.6) / 100 },
     }),
@@ -27,13 +28,13 @@ export default function StressTest() {
   });
   const r = sim.data;
   const broken = new Map<number, string>();
-  r?.affected.forEach((a: any) => { if (!broken.has(a.facility_id) || a.after === "critical") broken.set(a.facility_id, a.after); });
-  const markers = (geo.data?.features ?? []).map((f: any) => {
+  r?.affected.forEach((a) => { if (!broken.has(a.facility_id) || a.after === "critical") broken.set(a.facility_id, a.after); });
+  const markers = (geo.data?.features ?? []).map((f) => {
     const p = f.properties;
     const sev = (broken.get(p.id) ?? (r ? "low" : p.severity)) as Sev;
     return { id: p.id, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], color: SEV[sev].color, size: broken.has(p.id) ? 26 : 14, label: `${p.name}: ${sev}` };
   });
-  const routes = (r?.plan ?? []).map((p: any) => ({ from: [p.from_lat, p.from_lng] as [number, number], to: [p.to_lat, p.to_lng] as [number, number], color: "#0072B2", label: `${p.quantity} x ${p.abo_rh} ${p.component}` }));
+  const routes = (r?.plan ?? []).map((p) => ({ from: [p.from_lat, p.from_lng] as [number, number], to: [p.to_lat, p.to_lng] as [number, number], color: "#0072B2", label: `${p.quantity} x ${p.abo_rh} ${p.component}` }));
   return (
     <div className="space-y-4">
       <div><h1>{t("stress")}: mass-casualty what-if</h1>
@@ -67,15 +68,15 @@ export default function StressTest() {
           <div className="grid gap-4 lg:grid-cols-2">
             <Card title="Which series break">
               <table className="w-full text-sm"><thead><tr className="text-left text-xs text-muted"><th>Facility</th><th>Series</th><th>Before → after</th><th>P24</th><th>TTS</th></tr></thead>
-                <tbody>{r.affected.slice(0, 15).map((a: any, i: number) => (
+                <tbody>{r.affected.slice(0, 15).map((a, i: number) => (
                   <tr key={i} className="border-t border-line-soft"><td>{a.name}</td><td>{a.abo_rh} {a.component}</td><td><SevBadge sev={a.before} /> → <SevBadge sev={a.after} /></td><td>{pct(a.p_stockout_24)}</td><td>{hrs(a.tts_p50)}</td></tr>))}
                 </tbody></table>
             </Card>
             <Card title={`Response plan (${r.plan.length} transfers, ${r.unmet.length} unmet needs)`}>
-              <ul className="space-y-1 text-sm">{r.plan.slice(0, 15).map((p: any, i: number) => (
+              <ul className="space-y-1 text-sm">{r.plan.slice(0, 15).map((p, i: number) => (
                 <li key={i}><b>{p.quantity} x {p.abo_rh} {p.component}</b>: {p.from_name} → {p.to_name} <span className="text-xs text-muted">({Math.round(p.eta_minutes)} min{p.needs_clinician_approval ? ", substitute" : ""})</span></li>))}
               </ul>
-              {r.unmet.length > 0 && <p className="mt-2 text-xs text-[#a34000]">Unmet after all feasible transfers: trigger donor appeals for {[...new Set(r.unmet.map((u: any) => u.abo_rh))].join(", ")}.</p>}
+              {r.unmet.length > 0 && <p className="mt-2 text-xs text-[#a34000]">Unmet after all feasible transfers: trigger donor appeals for {[...new Set(r.unmet.map((u) => u.abo_rh))].join(", ")}.</p>}
             </Card>
           </div>
         </>

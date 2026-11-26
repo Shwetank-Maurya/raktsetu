@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ARTICLES, fmtDate, type Article } from "../content/articles";
-
-export function ArticleCard({ a }: { a: Article; large?: boolean }) {
-  return (
-    <Link to={`/articles/${a.slug}`} className="group block rounded-xl border border-line bg-white p-5 hover:border-ink/25">
-      <div className="text-xs text-muted">{a.category} · {fmtDate(a.date)}</div>
-      <h3 className="mt-2 text-[15px] font-semibold leading-snug text-ink group-hover:text-accent">{a.title} {a.accent}</h3>
-      <p className="mt-2 line-clamp-3 text-sm text-muted">{a.excerpt}</p>
-    </Link>
-  );
-}
+import { ARTICLES, fmtDate } from "../content/articles";
 
 const CATS = ["All", "Inside RaktSetu", "Explainer", "Field notes", "Responsible AI"] as const;
 

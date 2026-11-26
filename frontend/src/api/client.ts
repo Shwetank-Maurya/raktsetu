@@ -42,12 +42,13 @@ async function request<T>(method: string, path: string, body?: unknown, opts: { 
   return data as T;
 }
 
+// Response types default to `unknown`: callers must declare what they expect (see ./endpoints.ts).
 export const api = {
-  get: <T = any>(path: string) => request<T>("GET", path),
-  post: <T = any>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}, { idempotent: true }),
-  put: <T = any>(path: string, body?: unknown) => request<T>("PUT", path, body, { idempotent: true }),
-  read: <T = any>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}), // read-only POST (copilot, simulate)
-  upload: <T = any>(path: string, form: FormData) => request<T>("POST", path, undefined, { form }),
+  get: <T = unknown>(path: string) => request<T>("GET", path),
+  post: <T = unknown>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}, { idempotent: true }),
+  put: <T = unknown>(path: string, body?: unknown) => request<T>("PUT", path, body, { idempotent: true }),
+  read: <T = unknown>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}), // read-only POST (copilot, simulate)
+  upload: <T = unknown>(path: string, form: FormData) => request<T>("POST", path, undefined, { form }),
 };
 
 export const enc = (g: string) => encodeURIComponent(g);

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
-import MapView, { mapsProvider } from "../components/MapView";
+import { endpoints } from "../api/endpoints";
+
+import MapView from "../components/MapView";
+import { mapsProvider } from "../lib/maps";
 import { Card, ErrorBox, Freshness, SevBadge, Spinner } from "../components/ui";
 import { COMP_LABEL, COMPONENTS, GROUPS, SEV, hrs, pct, type Sev } from "../lib/format";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 import { useNetworkCenter } from "../lib/region";
 
@@ -16,24 +18,24 @@ export default function RiskMap() {
   const [comp, setComp] = useState("");
   const [sel, setSel] = useState<number | null>(null);
   const center = useNetworkCenter();
-  const geo = useQuery({ queryKey: ["map", "risk"], queryFn: () => api.get("/api/map/risk"), refetchInterval: POLL_MS });
-  const heatQ = useQuery({ queryKey: ["map", "heat", comp], queryFn: () => api.get(`/api/map/heat${comp ? `?component=${comp}` : ""}`) });
-  const tr = useQuery({ queryKey: ["transfers", "map"], queryFn: () => api.get("/api/transfers?status=proposed,approved,dispatched&limit=60") });
-  const matrix = useQuery({ queryKey: ["matrix"], queryFn: () => api.get("/api/inventory/matrix"), enabled: sel != null });
-  const risk = useQuery({ queryKey: ["risk", "fac", sel], queryFn: () => api.get(`/api/risk?facility_id=${sel}&limit=40`), enabled: sel != null });
-  if (geo.isLoading) return <Spinner />;
+  const geo = useQuery({ queryKey: ["map", "risk"], queryFn: endpoints.mapRisk, refetchInterval: POLL_MS });
+  const heatQ = useQuery({ queryKey: ["map", "heat", comp], queryFn: () => endpoints.mapHeat(comp) });
+  const tr = useQuery({ queryKey: ["transfers", "map"], queryFn: () => endpoints.transfers("proposed,approved,dispatched", 60) });
+  const matrix = useQuery({ queryKey: ["matrix"], queryFn: endpoints.matrix, enabled: sel != null });
+  const risk = useQuery({ queryKey: ["risk", "fac", sel], queryFn: () => endpoints.risk({ facility_id: sel, limit: 40 }), enabled: sel != null });
   if (geo.error) return <ErrorBox error={geo.error} />;
-  const feats = geo.data.features as any[];
+  if (!geo.data) return <Spinner />;
+  const feats = geo.data.features;
   const markers = feats.map((f) => {
     const p = f.properties;
     const s = SEV[p.severity as Sev];
     return { id: p.id, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], color: s.color, shape: p.type === "blood_bank" ? "B" : "",
       size: p.type === "blood_bank" ? 22 : 16 + (p.severity === "critical" ? 8 : 0), label: `${p.name} - ${p.severity}${p.worst_series ? ` (${p.worst_series})` : ""}` };
   });
-  const routeData = (tr.data ?? []).map((x: any) => ({ from: [x.from_lat, x.from_lng] as [number, number], to: [x.to_lat, x.to_lng] as [number, number],
+  const routeData = (tr.data ?? []).map((x) => ({ from: [x.from_lat, x.from_lng] as [number, number], to: [x.to_lat, x.to_lng] as [number, number],
     color: x.status === "dispatched" ? "#CC79A7" : x.status === "approved" ? "#009E73" : "#0072B2", label: `${x.quantity} x ${x.abo_rh} ${x.component} (${x.status})` }));
   const selF = feats.find((f) => f.properties.id === sel)?.properties;
-  const cells = matrix.data?.facilities.find((f: any) => f.facility_id === sel)?.cells ?? {};
+  const cells = matrix.data?.facilities.find((f) => f.facility_id === sel)?.cells ?? {};
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -64,7 +66,7 @@ export default function RiskMap() {
               </table>
               <div>
                 <div className="mb-1 text-xs font-semibold text-body">Top risks</div>
-                {(risk.data?.items ?? []).slice(0, 6).map((r: any) => (
+                {(risk.data?.items ?? []).slice(0, 6).map((r) => (
                   <Link key={r.abo_rh + r.component} to={`/forecast?f=${r.facility_id}&g=${encodeURIComponent(r.abo_rh)}&c=${r.component}`} className="flex items-center justify-between rounded px-1 py-1 hover:bg-canvas">
                     <span><SevBadge sev={r.severity} /> {r.abo_rh} {r.component}</span><span className="text-xs">{pct(r.p_stockout_24)} / 24h · {hrs(r.tts_p50)}</span>
                   </Link>

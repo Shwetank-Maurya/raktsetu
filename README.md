@@ -108,7 +108,7 @@ and change pings for live browsers. Full details, invariants and decision log:
 make db install migrate seed replay   # Postgres in Docker, deps, schema, synthetic data, evaluation
 make api                              # http://localhost:8000/docs
 make web                              # http://localhost:5173 -> pick a demo role
-make test lint                        # 127 backend tests, ruff, tsc
+make test lint                        # 137 backend tests + 25 frontend tests; ruff, ESLint, tsc
 ```
 Demo roles: **Regional coordinator** (whole network), **Blood bank manager** (Delhi Central Blood Bank),
 **Hospital transfusion officer** (one hospital only - try to see another facility's data).
@@ -122,6 +122,16 @@ Option B (Cloud Run + Firebase Hosting) or Option A (Render + Firebase Hosting, 
 - Role-scoped data on every endpoint and in Firestore rules; donor phones hashed, first names only (DPDP Act principles).
 - Gemini never computes numbers; untrusted text is fenced; a prompt-injection canary is seeded in the data.
 - Audit log of every human decision; model name and version stored with every forecast.
+
+## Code quality and testing
+- **Backend:** 137 pytest tests (pure logic, Hypothesis properties, Postgres-backed concurrency, RBAC, alerting,
+  onboarding, LLM fallback), `ruff` with security rules.
+- **Frontend:** strict TypeScript with **zero `any`**; every API response is typed (`frontend/src/api/types.ts`)
+  and reached through one typed client (`frontend/src/api/endpoints.ts`). ESLint (typescript-eslint, React hooks
+  rules) runs with `--max-warnings 0`. 25 Vitest + Testing Library tests cover data helpers, the API layer
+  (URL building, idempotency keys, error mapping), accessible UI components and content integrity.
+- **CI** (`.github/workflows/ci.yml`): backend lint + migrations + tests, frontend lint + typecheck + tests + build,
+  and a gitleaks secret scan on every push.
 
 ## Docs
 [Architecture](docs/ARCHITECTURE.md) · [Data Card](docs/DATA_CARD.md) · [Edge cases](docs/EDGE_CASES.md) ·

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ShieldCheck, UserRoundPlus } from "lucide-react";
-import { Button, ErrorBox, inputCls } from "../components/ui";
-import { useAuth } from "../lib/auth";
+import { Button, ErrorBox } from "../components/ui";
+import { inputCls } from "../lib/styles";
+import { useAuth } from "../lib/auth-context";
 import { firebaseEnabled, track } from "../lib/firebase";
 
 const STEPS = [

@@ -9,6 +9,7 @@ import { HeatmapLayer } from "@deck.gl/aggregation-layers";
 import { ArcLayer } from "@deck.gl/layers";
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { MAPS_KEY as KEY } from "../lib/maps";
 
 export type Marker = { id: number | string; lat: number; lng: number; color: string; label: string; size?: number; shape?: string };
 export type HeatPoint = { lat: number; lng: number; weight: number };
@@ -19,11 +20,9 @@ type Props = {
   center?: [number, number]; zoom?: number; pick?: [number, number] | null;
 };
 
-const KEY = import.meta.env.VITE_MAPS_BROWSER_KEY as string | undefined;
 const MAP_ID = (import.meta.env.VITE_MAPS_MAP_ID as string | undefined) || "DEMO_MAP_ID";
 const CENTER: [number, number] = [20.59, 78.96]; // India; pages pass the network centre from the DB
 
-export const mapsProvider = KEY ? "Google Maps Platform" : "OpenStreetMap (fallback - set VITE_MAPS_BROWSER_KEY)";
 
 export default function MapView(props: Props) {
   return KEY ? <GoogleMapView {...props} /> : <LeafletMapView {...props} />;

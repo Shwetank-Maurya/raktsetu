@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight, BarChart3, Bot, Building2, Check, Hospital, Map as MapIcon, ShieldCheck, Timer, Truck, Users,
 } from "lucide-react";
-import { SevBadge, SOFT } from "../components/ui";
+import { SevBadge } from "../components/ui";
+import { SOFT } from "../lib/styles";
 import { ARTICLES, fmtDate } from "../content/articles";
 import { describeNetwork, usePublicSummary, type PublicSummary } from "../lib/summary";
 

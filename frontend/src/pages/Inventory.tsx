@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { Button, Card, ErrorBox, Select } from "../components/ui";
 import { COMP_LABEL, COMPONENTS, GROUPS } from "../lib/format";
-import { useAuth } from "../lib/auth";
-import { useI18n } from "../lib/i18n";
+import { useAuth } from "../lib/auth-context";
+import { useI18n } from "../lib/i18n-context";
 
 export default function Inventory() {
   const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const facs = useQuery({ queryKey: ["facilities"], queryFn: () => api.get("/api/facilities") });
-  const inScope = (facs.data ?? []).filter((f: any) => f.in_scope);
+  const facs = useQuery({ queryKey: ["facilities"], queryFn: endpoints.facilities });
+  const inScope = (facs.data ?? []).filter((f) => f.in_scope);
   const [fid, setFid] = useState(String(user?.facility_id ?? ""));
   const [type, setType] = useState("receive");
   const [g, setG] = useState("O+");
@@ -20,7 +21,7 @@ export default function Inventory() {
   const [emergency, setEmergency] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const m = useMutation({
-    mutationFn: () => api.post("/api/inventory/events", { type, facility_id: Number(fid || inScope[0]?.id), abo_rh: g, component: c, quantity: qty, emergency, source: "ui" }),
+    mutationFn: () => endpoints.recordEvent({ type, facility_id: Number(fid || inScope[0]?.id), abo_rh: g, component: c, quantity: qty, emergency, source: "ui" }),
     onSuccess: (d) => { setLog((l) => [`${new Date().toLocaleTimeString("en-IN")}: ${type} ${d.count} x ${g} ${c} (event #${d.event_id})`, ...l]); qc.invalidateQueries(); },
   });
   return (
@@ -29,7 +30,7 @@ export default function Inventory() {
         <p className="text-sm text-muted">Every change appends to the ledger with an Idempotency-Key, so a double-click or network retry never double-counts. Issues use FEFO automatically. Open the Availability matrix in another browser to watch it update.</p></div>
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Select label="Facility" value={fid} onChange={setFid} options={inScope.map((f: any) => [String(f.id), `${f.code} ${f.name}`] as [string, string])} />
+          <Select label="Facility" value={fid} onChange={setFid} options={inScope.map((f) => [String(f.id), `${f.code} ${f.name}`] as [string, string])} />
           <Select label="Event" value={type} onChange={setType} options={[["receive", "Receive (new units)"], ["issue", "Issue to patient (FEFO)"], ["discard", "Discard"]]} />
           <Select label="Blood group" value={g} onChange={setG} options={[...GROUPS]} />
           <Select label="Component" value={c} onChange={setC} options={COMPONENTS.map((x) => [x, COMP_LABEL[x]] as [string, string])} />

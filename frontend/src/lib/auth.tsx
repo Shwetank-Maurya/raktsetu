@@ -1,35 +1,15 @@
 // Authentication: Firebase Auth (email/password, optional Google) is the primary path. The ID token
 // is sent to the API, which verifies it and reads the role custom claims (role, facility_id,
 // region_id). If Firebase is not configured, the legacy signed demo tokens keep the app usable.
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   createUserWithEmailAndPassword, GoogleAuthProvider, onIdTokenChanged, sendEmailVerification, sendPasswordResetEmail,
   signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile,
 } from "firebase/auth";
 import { api, getStoredToken, setTokenProvider, storeToken } from "../api/client";
+import { AuthCtx, DEMO_ACCOUNTS, type AuthValue, type User } from "./auth-context";
 import { auth, firebaseEnabled } from "./firebase";
 
-export type User = { uid: string; role: string; name: string; facility_id: number | null; region_id: number | null; auth: string };
-type Ctx = {
-  user: User | null;
-  loading: boolean;
-  emailLogin: (email: string, pw: string) => Promise<void>;
-  googleLogin: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  signup: (name: string, email: string, pw: string) => Promise<void>;
-  /** Re-reads role claims (after an access request is approved). Returns the new role. */
-  refreshAccess: () => Promise<string | null>;
-  demoLogin: (who: string) => Promise<void>;
-  logout: () => Promise<void>;
-};
-const AuthCtx = createContext<Ctx>(null as unknown as Ctx);
-export const useAuth = () => useContext(AuthCtx);
-
-export const DEMO_ACCOUNTS = [
-  { who: "coordinator", email: "coordinator@raktsetu.demo", label: "Regional coordinator" },
-  { who: "bank", email: "bank@raktsetu.demo", label: "Blood bank manager" },
-  { who: "hospital", email: "hospital@raktsetu.demo", label: "Hospital officer" },
-] as const;
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD as string | undefined;
 
 function friendly(e: unknown): Error {
@@ -52,7 +32,7 @@ function friendly(e: unknown): Error {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => firebaseEnabled || Boolean(getStoredToken()));
 
   const loadMe = async () => {
     try {
@@ -65,8 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!firebaseEnabled || !auth) {
-      if (getStoredToken()) loadMe().finally(() => setLoading(false));
-      else setLoading(false);
+      // Legacy demo token (no Firebase): resolve the session; state updates happen in promise callbacks.
+      if (getStoredToken()) {
+        api.get<User>("/api/auth/me").then(setUser, () => setUser(null)).finally(() => setLoading(false));
+      }
       return;
     }
     // Firebase refreshes ID tokens hourly; the provider always hands the API a fresh one.
@@ -83,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const value: Ctx = {
+  const value: AuthValue = {
     user,
     loading,
     emailLogin: async (email, pw) => {

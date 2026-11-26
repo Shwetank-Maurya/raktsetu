@@ -2,22 +2,23 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { AsOf, Card, ErrorBox, Spinner, Stat } from "../components/ui";
 import { COMP_LABEL } from "../lib/format";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 
 export default function Expiry() {
   const { t } = useI18n();
   const [hours, setHours] = useState(96);
-  const q = useQuery({ queryKey: ["expiring", hours], queryFn: () => api.get(`/api/inventory/expiring?hours=${hours}`), refetchInterval: POLL_MS });
-  const k = useQuery({ queryKey: ["kpis"], queryFn: () => api.get("/api/kpis") });
-  const rescue = useQuery({ queryKey: ["transfers", "rescue"], queryFn: () => api.get("/api/transfers?status=proposed&limit=200") });
-  if (q.isLoading) return <Spinner />;
+  const q = useQuery({ queryKey: ["expiring", hours], queryFn: () => endpoints.expiring(hours), refetchInterval: POLL_MS });
+  const k = useQuery({ queryKey: ["kpis"], queryFn: endpoints.kpis });
+  const rescue = useQuery({ queryKey: ["transfers", "rescue"], queryFn: () => endpoints.transfers("proposed", 200) });
   if (q.error) return <ErrorBox error={q.error} />;
+  if (!q.data) return <Spinner />;
   const buckets = Object.entries(q.data.buckets).map(([name, v]) => ({ name, units: v as number }));
-  const moves = (rescue.data ?? []).filter((t: any) => (t.reason?.saves?.wastage_units ?? 0) > 0);
+  const moves = (rescue.data ?? []).filter((t) => (t.reason?.saves?.wastage_units ?? 0) > 0);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -42,10 +43,10 @@ export default function Expiry() {
         <Card title="Use-it-or-move-it recommendations" className="lg:col-span-2">
           {moves.length === 0 ? <p className="text-sm text-muted">No rescue moves proposed right now.</p> : (
             <ul className="divide-y divide-line-soft text-sm">
-              {moves.slice(0, 10).map((m: any) => (
+              {moves.slice(0, 10).map((m) => (
                 <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                   <span>Move <b>{m.quantity} x {m.abo_rh} {COMP_LABEL[m.component]}</b> from {m.from_name} to {m.to_name}</span>
-                  <span className="text-xs text-body">saves {m.reason.saves.wastage_units} from expiry · arrives with {Math.round(m.min_life_on_arrival_h)} h life · ETA {Math.round(m.eta_minutes)} min</span>
+                  <span className="text-xs text-body">saves {m.reason.saves?.wastage_units ?? 0} from expiry · arrives with {Math.round(m.min_life_on_arrival_h)} h life · ETA {Math.round(m.eta_minutes)} min</span>
                 </li>
               ))}
             </ul>
@@ -55,7 +56,7 @@ export default function Expiry() {
       <Card title={`Expiring within ${hours} h (FEFO order)`}>
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs text-muted"><th>Facility</th><th>Group</th><th>Component</th><th>Units</th><th>Earliest expiry</th></tr></thead>
-          <tbody>{q.data.groups.slice(0, 60).map((g: any) => (
+          <tbody>{q.data.groups.slice(0, 60).map((g) => (
             <tr key={`${g.facility_id}${g.abo_rh}${g.component}`} className="border-t border-line-soft">
               <td>{g.facility_name}</td><td className="font-semibold">{g.abo_rh}</td><td>{COMP_LABEL[g.component]}</td><td>{g.units}</td>
               <td className={g.earliest_expiry_h < 24 ? "font-semibold text-[#a34000]" : ""}>{g.earliest_expiry_h} h</td>

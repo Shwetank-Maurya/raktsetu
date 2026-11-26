@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserCheck } from "lucide-react";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { Button, Card, EmptyState, ErrorBox, PageHeader, Spinner, Tabs } from "../components/ui";
 import { ist } from "../lib/format";
 
@@ -10,9 +11,9 @@ const ROLE: Record<string, string> = { hospital_user: "Hospital staff", bank_man
 export default function AccessRequests() {
   const qc = useQueryClient();
   const [status, setStatus] = useState("pending");
-  const q = useQuery({ queryKey: ["access-requests", status], queryFn: () => api.get(`/api/access-requests?status=${status}`) });
+  const q = useQuery({ queryKey: ["access-requests", status], queryFn: () => endpoints.accessRequests(status) });
   const act = useMutation({
-    mutationFn: ({ id, action }: { id: number; action: "approve" | "reject" }) => api.post(`/api/access-requests/${id}/${action}`, {}),
+    mutationFn: ({ id, action }: { id: number; action: "approve" | "reject" }) => endpoints.decideAccess(id, action),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["access-requests"] }),
   });
   return (
@@ -27,7 +28,7 @@ export default function AccessRequests() {
           <table className="w-full text-sm">
             <thead><tr className="border-b border-line"><th className="px-5 py-2.5">Person</th><th>Requested</th><th>Facility</th><th>Requested at</th><th className="pr-5" /></tr></thead>
             <tbody>
-              {(q.data ?? []).map((r: any) => (
+              {(q.data ?? []).map((r) => (
                 <tr key={r.id} className="border-b border-line-soft last:border-0">
                   <td className="px-5 py-3"><div className="font-medium text-ink">{r.name}</div>{r.note && <div className="text-xs text-muted">{r.note}</div>}</td>
                   <td className="text-body">{ROLE[r.requested_role] ?? r.requested_role}</td>

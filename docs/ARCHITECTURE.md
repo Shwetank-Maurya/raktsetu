@@ -34,7 +34,7 @@ make seed          # 12 months synthetic history + first full cycle (~40 s)
 make replay        # 90-day policy comparison -> Evaluation page (~6 s)
 make api           # FastAPI on :8000   (OpenAPI docs: http://localhost:8000/docs)
 make web           # Vite on :5173 (proxies /api -> :8000). Click a demo role to log in.
-make test          # 127 tests (pure + Postgres-backed). make lint = ruff + tsc
+make test          # 137 backend tests. Frontend: cd frontend && npm run lint && npm test (25 tests)
 ```
 No Google credentials are needed locally: every integration degrades gracefully (section 9).
 
@@ -350,7 +350,16 @@ risk distribution, latest alerts.
 Article text lives in `src/content/articles.ts`; numbers about the live system are `{{tokens}}` filled
 from the public summary (`lib/summary.ts`), so nothing about the network is hard-coded in the UI.
 
-## 12. Testing (`backend/tests`, 127 tests, ~4 s)
+## 12. Testing
+Frontend (`frontend/src/**/*.test.ts(x)`, Vitest + Testing Library, `npm test`): template filling and network
+description (`lib/summary`), formatting, the typed API layer with mocked fetch (paths, encoding, Idempotency-Key on
+writes only, ApiError mapping), accessible UI primitives (text severity, ARIA meter, role=alert), article content
+integrity (unique slugs, only known `{{tokens}}`) and the Articles page filter via tab roles.
+Frontend structure rules: all API access goes through `src/api/endpoints.ts` (typed by `src/api/types.ts`;
+`api.get` defaults to `unknown`); contexts/hooks live in `lib/*-context.ts`, providers in `lib/*.tsx`; shared
+style tokens in `lib/styles.ts`. ESLint (`frontend/eslint.config.js`) forbids explicit `any`.
+
+### Backend tests (`backend/tests`, 137 tests)
 - `test_risk_sim.py`: vectorised FEFO == brute-force oracle (Hypothesis); more stock never raises risk;
   longer lead never lowers it; mean (not median) drives demand; hysteresis; fallback; confidence.
 - `test_compat_optimizer.py`: full 8x8 RBC matrix vs blueprint; plasma reversal; O- ordering; donor floor

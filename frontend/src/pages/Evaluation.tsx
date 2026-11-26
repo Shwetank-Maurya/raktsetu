@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { Card, ErrorBox, Spinner, Stat } from "../components/ui";
 import { ist } from "../lib/format";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 
 export default function Evaluation() {
   const { t } = useI18n();
-  const q = useQuery({ queryKey: ["eval"], queryFn: () => api.get("/api/eval") });
-  if (q.isLoading) return <Spinner />;
+  const q = useQuery({ queryKey: ["eval"], queryFn: endpoints.evaluation });
   if (q.error) return <ErrorBox error={q.error} />;
+  if (!q.data) return <Spinner />;
   const bt = q.data.backtest?.overall;
   const rp = q.data.replay;
   const replayBars = rp ? [
@@ -17,7 +18,8 @@ export default function Evaluation() {
     { metric: "Unmet units", "Static threshold": rp.policy_a.unmet, RaktSetu: rp.policy_b.unmet },
     { metric: "Stockout series-days", "Static threshold": rp.policy_a.stockout_days, RaktSetu: rp.policy_b.stockout_days },
   ] : [];
-  const groups = q.data.backtest?.metrics ?? {};
+  const backtest = q.data.backtest;
+  const groups = backtest?.metrics ?? {};
   return (
     <div className="space-y-4">
       <div><h1>{t("eval")}</h1>
@@ -34,10 +36,10 @@ export default function Evaluation() {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead><tr className="text-left text-muted"><th>Group</th><th>Chosen</th><th>seasonal naive</th><th>moving avg 28</th><th>Croston SBA</th><th>LightGBM quantile</th><th>width scale</th></tr></thead>
-                <tbody>{Object.entries(groups).map(([g, m]: [string, any]) => (
-                  <tr key={g} className="border-t border-line-soft"><td className="font-semibold">{g}</td><td>{q.data.backtest.chosen[g]}</td>
-                    {["seasonal_naive", "moving_avg_28", "croston_sba", "lgbm_quantile"].map((k) => <td key={k} className={q.data.backtest.chosen[g] === k ? "font-semibold text-emerald-700" : ""}>{m[k]?.pinball ?? "-"}</td>)}
-                    <td>{q.data.backtest.conformal[g]}</td></tr>))}
+                <tbody>{Object.entries(groups).map(([g, m]) => (
+                  <tr key={g} className="border-t border-line-soft"><td className="font-semibold">{g}</td><td>{backtest?.chosen[g]}</td>
+                    {["seasonal_naive", "moving_avg_28", "croston_sba", "lgbm_quantile"].map((k) => <td key={k} className={backtest?.chosen[g] === k ? "font-semibold text-emerald-700" : ""}>{m[k]?.pinball ?? "-"}</td>)}
+                    <td>{backtest?.conformal[g]}</td></tr>))}
                 </tbody>
               </table>
             </div>
@@ -67,7 +69,7 @@ export default function Evaluation() {
       )}
       <Card title="Scheduled job history (Cloud Scheduler → /internal/jobs/run-cycle)">
         <table className="w-full text-xs"><thead><tr className="text-left text-muted"><th>Started</th><th>Status</th><th>Duration</th><th>Series</th><th>Proposals</th><th>Trigger</th></tr></thead>
-          <tbody>{q.data.job_runs.map((j: any) => (
+          <tbody>{q.data.job_runs.map((j) => (
             <tr key={j.id} className="border-t border-line-soft"><td>{ist(j.started_at)}</td><td>{j.status}</td><td>{j.stats?.duration_s ?? "-"} s</td><td>{j.stats?.risk_series ?? "-"}</td><td>{j.stats?.plan?.proposals ?? "-"}</td><td>{j.stats?.trigger ?? "-"}</td></tr>))}
           </tbody></table>
       </Card>

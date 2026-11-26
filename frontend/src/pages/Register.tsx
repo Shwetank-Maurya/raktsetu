@@ -1,33 +1,35 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+import type { RegisterRow } from "../api/types";
+
 import { Button, Card, ErrorBox, Select } from "../components/ui";
 import { COMPONENTS, GROUPS } from "../lib/format";
-import { useAuth } from "../lib/auth";
-import { useI18n } from "../lib/i18n";
+import { useAuth } from "../lib/auth-context";
+import { useI18n } from "../lib/i18n-context";
 
 export default function Register() {
   const { t } = useI18n();
   const { user } = useAuth();
-  const facs = useQuery({ queryKey: ["facilities"], queryFn: () => api.get("/api/facilities") });
+  const facs = useQuery({ queryKey: ["facilities"], queryFn: endpoints.facilities });
   const [fid, setFid] = useState(String(user?.facility_id ?? ""));
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<RegisterRow[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const extract = useMutation({
-    mutationFn: () => { const fd = new FormData(); fd.append("facility_id", fid); fd.append("image", file!); return api.upload("/api/register/extract", fd); },
+    mutationFn: () => { const fd = new FormData(); fd.append("facility_id", fid); fd.append("image", file!); return endpoints.registerExtract(fd); },
     onSuccess: (d) => setRows(d.rows),
   });
-  const commit = useMutation({ mutationFn: () => api.post("/api/register/commit", { facility_id: Number(fid), rows: rows.map(({ row: _r, issues: _i, low_confidence_fields: _l, blocks_commit: _b, confidence: _c, ...rest }) => rest) }) });
+  const commit = useMutation({ mutationFn: () => endpoints.registerCommit({ facility_id: Number(fid), rows: rows.map(({ row: _r, issues: _i, low_confidence_fields: _l, blocks_commit: _b, confidence: _c, ...rest }) => rest) }) });
   const edit = (i: number, k: string, v: string) => setRows((rs) => rs.map((r, j) => j !== i ? r : { ...r, [k]: k === "quantity" ? Number(v) : v, low_confidence_fields: r.low_confidence_fields.filter((f: string) => f !== k) }));
   const blocked = rows.some((r) => r.low_confidence_fields.length || r.issues.length);
-  const inScope = (facs.data ?? []).filter((f: any) => f.in_scope);
+  const inScope = (facs.data ?? []).filter((f) => f.in_scope);
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <div><h1>{t("register")}: photo of a paper stock register → structured inventory</h1>
         <p className="text-sm text-muted">Gemini vision extracts rows with a strict JSON schema and per-field confidence. Low-confidence fields are highlighted and block commit until a human edits them. Nothing is committed automatically.</p></div>
       <Card>
         <div className="flex flex-wrap items-end gap-3">
-          <Select label="Facility" value={fid} onChange={setFid} options={[["", "choose"], ...inScope.map((f: any) => [String(f.id), `${f.code} ${f.name}`] as [string, string])]} />
+          <Select label="Facility" value={fid} onChange={setFid} options={[["", "choose"], ...inScope.map((f) => [String(f.id), `${f.code} ${f.name}`] as [string, string])]} />
           <label className="text-xs text-body">Register photo<input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block text-sm" /></label>
           <Button onClick={() => extract.mutate()} disabled={!file || !fid || extract.isPending}>{extract.isPending ? "Reading with Gemini..." : "Extract"}</Button>
         </div>

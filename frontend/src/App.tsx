@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import { Spinner } from "./components/ui";
-import { useAuth } from "./lib/auth";
+import { useAuth } from "./lib/auth-context";
 import { DEFAULT_FLAGS, loadFlags, type Flags } from "./lib/firebase";
 import PublicLayout from "./components/PublicLayout";
 import Landing from "./pages/Landing";

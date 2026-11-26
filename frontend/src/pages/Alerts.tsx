@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { Button, Card, ErrorBox, SevBadge, Spinner } from "../components/ui";
 import { ist } from "../lib/format";
-import { useAuth } from "../lib/auth";
+import { useAuth } from "../lib/auth-context";
 import { enablePush, firebaseEnabled } from "../lib/firebase";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 
 export default function Alerts() {
@@ -14,8 +15,8 @@ export default function Alerts() {
   const qc = useQueryClient();
   const [status, setStatus] = useState("open,ack");
   const [push, setPush] = useState<string | null>(null);
-  const q = useQuery({ queryKey: ["alerts", status], queryFn: () => api.get(`/api/alerts?status=${status}&limit=200`), refetchInterval: POLL_MS });
-  const ack = useMutation({ mutationFn: (id: number) => api.post(`/api/alerts/${id}/ack`, {}), onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }) });
+  const q = useQuery({ queryKey: ["alerts", status], queryFn: () => endpoints.alerts({ status, limit: 200 }), refetchInterval: POLL_MS });
+  const ack = useMutation({ mutationFn: endpoints.ackAlert, onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }) });
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -33,7 +34,7 @@ export default function Alerts() {
       {q.isLoading ? <Spinner /> : (
         <Card>
           <ul className="divide-y divide-line-soft">
-            {(q.data ?? []).map((a: any) => (
+            {(q.data ?? []).map((a) => (
               <li key={a.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   <SevBadge sev={a.severity} />

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { ChevronRight, Inbox, X, type LucideIcon } from "lucide-react";
 import { hrs } from "../lib/format";
+import { SOFT } from "../lib/styles";
 
 /* ---------------------------------------------------------------- layout primitives */
 
@@ -39,15 +40,6 @@ export function Card({ title, description, action, children, className, tone = "
   );
 }
 
-export function SectionTitle({ title, accent, className }: { title: ReactNode; accent?: ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <h2 className="text-xl font-semibold text-ink">{title}</h2>
-      {accent && <p className="mt-1 text-sm text-muted">{accent}</p>}
-    </div>
-  );
-}
-
 export function Stat({ label, value, hint, tone, icon: Icon }: { label: string; value: ReactNode; hint?: ReactNode; tone?: string; icon?: LucideIcon }) {
   const toneColor = tone ? SOFT[tone as keyof typeof SOFT]?.fg : undefined;
   return (
@@ -74,16 +66,6 @@ export function EmptyState({ title, children, icon: Icon = Inbox }: { title: str
 
 /* ---------------------------------------------------------------- status */
 
-// Okabe-Ito hues (colour-blind safe), softened for chips; always rendered with a text label.
-export const SOFT = {
-  critical: { bg: "#fdeee6", fg: "#a34000", dot: "#D55E00" },
-  high: { bg: "#fdf4e3", fg: "#8a5800", dot: "#E69F00" },
-  medium: { bg: "#e9f4fb", fg: "#1d6a96", dot: "#56B4E9" },
-  low: { bg: "#e5f5ee", fg: "#0b6b49", dot: "#009E73" },
-  warning: { bg: "#fbf8dc", fg: "#6f6400", dot: "#C9B800" },
-  info: { bg: "#f1f1f3", fg: "#52525b", dot: "#a1a1aa" },
-} as const;
-
 export function SevBadge({ sev, label }: { sev: string; label?: string }) {
   const s = SOFT[(sev as keyof typeof SOFT) in SOFT ? (sev as keyof typeof SOFT) : "info"];
   return (
@@ -108,7 +90,7 @@ export function Freshness({ hours }: { hours: number | null | undefined }) {
 
 /** Ticks down every second from tts hours measured at asOf. */
 export function Countdown({ hours, asOf }: { hours: number | null; asOf?: string | null }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -180,8 +162,6 @@ export function Select({ value, onChange, options, label }: { value: string; onC
     </label>
   );
 }
-
-export const inputCls = "h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none";
 
 /* ---------------------------------------------------------------- feedback */
 

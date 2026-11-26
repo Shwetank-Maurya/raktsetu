@@ -6,9 +6,10 @@ import {
   Activity, BarChart3, Bell, Bot, Camera, ClipboardCheck, Database, Droplet, FileText, FlaskConical, Grid3x3, HeartHandshake,
   LogOut, Map as MapIcon, Menu, PackagePlus, Timer, Truck, UserPlus, X,
 } from "lucide-react";
-import { api } from "../api/client";
-import { useAuth } from "../lib/auth";
-import { useI18n, type Key } from "../lib/i18n";
+import { endpoints } from "../api/endpoints";
+
+import { useAuth } from "../lib/auth-context";
+import { useI18n, type Key } from "../lib/i18n-context";
 import { useLiveFeed } from "../lib/live";
 
 type Item = { to: string; key: Key; icon: typeof Activity; roles?: string[] };
@@ -98,7 +99,7 @@ export default function Layout() {
   const { live } = useLiveFeed();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
-  const kpis = useQuery({ queryKey: ["kpis"], queryFn: () => api.get("/api/kpis"), staleTime: 30_000 });
+  const kpis = useQuery({ queryKey: ["kpis"], queryFn: endpoints.kpis, staleTime: 30_000 });
   const openAlerts = kpis.data?.open_alerts ?? 0;
   return (
     <div className="min-h-screen bg-canvas">

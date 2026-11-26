@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Button, ErrorBox, inputCls } from "../components/ui";
-import { DEMO_ACCOUNTS, useAuth } from "../lib/auth";
+import { Button, ErrorBox } from "../components/ui";
+import { inputCls } from "../lib/styles";
+import { DEMO_ACCOUNTS, useAuth } from "../lib/auth-context";
 import { firebaseEnabled, track } from "../lib/firebase";
 import { usePublicSummary } from "../lib/summary";
 

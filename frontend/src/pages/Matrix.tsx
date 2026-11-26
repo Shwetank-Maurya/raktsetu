@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, enc } from "../api/client";
+import { endpoints } from "../api/endpoints";
+
 import { AsOf, Card, ErrorBox, Freshness, Select, Spinner, Tabs } from "../components/ui";
 import { COMP_LABEL, COMPONENTS, GROUPS } from "../lib/format";
-import { useAuth } from "../lib/auth";
-import { useI18n } from "../lib/i18n";
+import { useAuth } from "../lib/auth-context";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 
 function cellTone(n: number) {
@@ -21,13 +22,13 @@ export default function Matrix() {
   const [sg, setSg] = useState("O-");
   const [sc, setSc] = useState("RBC");
   const [searched, setSearched] = useState(false);
-  const m = useQuery({ queryKey: ["matrix"], queryFn: () => api.get("/api/inventory/matrix"), refetchInterval: POLL_MS });
+  const m = useQuery({ queryKey: ["matrix"], queryFn: endpoints.matrix, refetchInterval: POLL_MS });
   const search = useQuery({
     queryKey: ["search", sg, sc], enabled: searched,
-    queryFn: () => api.get(`/api/availability/search?abo_rh=${enc(sg)}&component=${sc}&radius_km=50${user?.facility_id ? `&facility_id=${user.facility_id}` : ""}`),
+    queryFn: () => endpoints.availability({ abo_rh: sg, component: sc, radius_km: 50, facility_id: user?.facility_id }),
   });
-  if (m.isLoading) return <Spinner />;
   if (m.error) return <ErrorBox error={m.error} />;
+  if (!m.data) return <Spinner />;
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -39,7 +40,7 @@ export default function Matrix() {
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-muted"><th className="py-1 pr-2">Facility</th><th>Fresh</th>{GROUPS.map((g) => <th key={g} className="px-1 text-center">{g}</th>)}<th className="text-right">Total</th></tr></thead>
             <tbody>
-              {m.data.facilities.map((f: any) => {
+              {m.data.facilities.map((f) => {
                 const vals = GROUPS.map((g) => f.cells[`${g}|${comp}`]?.usable ?? 0);
                 return (
                   <tr key={f.facility_id} className="border-t border-line-soft">
@@ -67,7 +68,7 @@ export default function Matrix() {
         {search.data && (
           <table className="mt-3 w-full text-sm">
             <thead><tr className="text-left text-xs text-muted"><th>Facility</th><th>Group</th><th>Units</th><th>ETA</th><th>Earliest expiry</th><th>Note</th></tr></thead>
-            <tbody>{search.data.results.map((r: any) => (
+            <tbody>{search.data.results.map((r) => (
               <tr key={r.facility_id + r.abo_rh} className="border-t border-line-soft">
                 <td>{r.facility_name}</td><td className="font-semibold">{r.abo_rh}</td><td>{r.units}</td><td>{r.eta_minutes} min</td><td>{Math.round(r.earliest_expiry_h)} h</td>
                 <td>{r.needs_clinician_approval ? <span className="rounded bg-amber-100 px-1 text-xs text-amber-900">compatible substitute - clinician approval</span> : <span className="text-xs text-emerald-700">exact match</span>}</td>

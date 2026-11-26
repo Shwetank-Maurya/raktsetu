@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { endpoints } from "../api/endpoints";
+import type { CopilotResponse } from "../api/types";
 import { useMutation } from "@tanstack/react-query";
 import { Bot, Send } from "lucide-react";
-import { api } from "../api/client";
+
 import { Button, Card, ErrorBox } from "../components/ui";
 import { track } from "../lib/firebase";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 
-type Msg = { role: "user" | "model"; text: string; meta?: any };
+type Msg = { role: "user" | "model"; text: string; meta?: CopilotResponse };
 const SUGGEST = {
   en: ["Which blood group is most at risk in the next 48 hours?", "Find O- red cells near Arogya Multispeciality", "Show open alerts", "What transfers are pending?"],
   hi: ["अगले 48 घंटों में किस रक्त समूह को सबसे अधिक खतरा है?", "O- रेड सेल कहाँ उपलब्ध हैं?", "खुले अलर्ट दिखाओ", "कौन से ट्रांसफर लंबित हैं?"],
@@ -17,7 +19,7 @@ export default function Copilot() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const chat = useMutation({
-    mutationFn: (text: string) => api.read("/api/copilot/chat", { message: text, language: lang, history: msgs.slice(-8).map((m) => ({ role: m.role, text: m.text })) }),
+    mutationFn: (text: string) => endpoints.copilot({ message: text, language: lang, history: msgs.slice(-8).map((m) => ({ role: m.role, text: m.text })) }),
     onSuccess: (d) => { setMsgs((m) => [...m, { role: "model", text: d.answer, meta: d }]); track("copilot", { fallback: d.fallback }); },
   });
   const send = (text: string) => {

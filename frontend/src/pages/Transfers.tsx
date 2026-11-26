@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+import type { Transfer } from "../api/types";
+
 import { Button, Card, Drawer, ErrorBox, SevBadge, Spinner, Tabs } from "../components/ui";
 import { COMP_LABEL, ist } from "../lib/format";
-import { useAuth } from "../lib/auth";
+import { useAuth } from "../lib/auth-context";
 import { track } from "../lib/firebase";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 
 const SEV_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -16,23 +18,25 @@ export default function Transfers() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState<string>("proposed");
-  const [open, setOpen] = useState<any>(null);
+  const [open, setOpen] = useState<Transfer | null>(null);
   const [onlyUrgent, setOnlyUrgent] = useState(true);
   const [ack, setAck] = useState(false);
-  const q = useQuery({ queryKey: ["transfers", tab], queryFn: () => api.get(`/api/transfers?status=${tab}&limit=300`), refetchInterval: POLL_MS });
-  const explain = useQuery({ queryKey: ["explain", open?.id, lang], enabled: !!open, queryFn: () => api.get(`/api/transfers/${open.id}/explain?lang=${lang}`) });
+  const q = useQuery({ queryKey: ["transfers", tab], queryFn: () => endpoints.transfers(tab), refetchInterval: POLL_MS });
+  const explain = useQuery({ queryKey: ["explain", open?.id, lang], enabled: !!open, queryFn: () => endpoints.explain(open!.id, lang) });
   const act = useMutation({
-    mutationFn: ({ id, action, body }: { id: number; action: string; body?: object }) => api.post(`/api/transfers/${id}/${action}`, body ?? {}),
+    mutationFn: ({ id, action, body }: { id: number; action: string; body?: Record<string, unknown> }) => endpoints.transferAction(id, action, body),
     onSuccess: (_d, v) => { track("transfer_action", { action: v.action }); qc.invalidateQueries(); setOpen(null); },
   });
-  const plan = useMutation({ mutationFn: () => api.post("/api/transfers/plan", { include_substitutes: true }), onSuccess: () => qc.invalidateQueries() });
+  const plan = useMutation({ mutationFn: endpoints.plan, onSuccess: () => qc.invalidateQueries() });
   const isNet = user?.role === "regional_coordinator" || user?.role === "admin";
-  let rows: any[] = q.data ?? [];
+  let rows: Transfer[] = q.data ?? [];
   if (tab === "proposed") {
-    rows = [...rows].sort((a, b) => (SEV_RANK[a.reason?.destination?.severity] ?? 9) - (SEV_RANK[b.reason?.destination?.severity] ?? 9) || b.quantity - a.quantity);
-    if (onlyUrgent) rows = rows.filter((r) => ["critical", "high"].includes(r.reason?.destination?.severity) || (r.reason?.saves?.wastage_units ?? 0) >= 3 || r.kind === "manual");
+    const rank = (t: Transfer) => SEV_RANK[t.reason?.destination?.severity ?? ""] ?? 9;
+    const urgent = (t: Transfer) => rank(t) <= 1 || (t.reason?.saves?.wastage_units ?? 0) >= 3 || t.kind === "manual";
+    rows = [...rows].sort((a, b) => rank(a) - rank(b) || b.quantity - a.quantity);
+    if (onlyUrgent) rows = rows.filter(urgent);
   }
-  const actions = (r: any) => {
+  const actions = (r: Transfer) => {
     const b: [string, string][] = [];
     if (r.status === "proposed" && isNet) b.push(["approve", t("approve")], ["reject", t("reject")]);
     if (r.status === "approved" && (isNet || user?.facility_id === r.from_facility_id)) b.push(["dispatch", t("dispatch")], ["cancel", t("cancel")]);

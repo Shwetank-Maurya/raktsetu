@@ -13,8 +13,6 @@ export type Article = {
   date: string; // ISO
   readMins: number;
   excerpt: string;
-  art: "platelet" | "network" | "countdown" | "transfer" | "season" | "calendar" | "ai" | "incident";
-  palette: [string, string];
   body: Block[];
 };
 
@@ -27,8 +25,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-24",
     readMins: 5,
     excerpt: "A fixed 'alert at 10 units' rule ignores weekdays, festivals, outbreaks and how long a transfer takes. A countdown with a confidence level does not.",
-    art: "countdown",
-    palette: ["#0b3fa8", "#3b8fe0"],
     body: [
       { p: "Most blood inventory systems raise a flag when stock falls below a fixed number. The trouble is that ten units of O-positive red cells can be three days of cover at a small hospital and a single busy evening at a trauma centre. A static threshold cannot tell those situations apart." },
       { h: "From a number to a distribution", p: "RaktSetu forecasts demand for every facility, blood group and component as a range rather than a single figure. Each forecast carries a 10th, 50th and 90th percentile and an expected value, learned by a global model that sees all facilities at once, so a new hospital with no history still gets a sensible estimate." },
@@ -47,8 +43,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-21",
     readMins: 4,
     excerpt: "The same week one hospital runs short, another discards expired units. Tracking every unit by expiry date turns that paradox into a transfer.",
-    art: "transfer",
-    palette: ["#9b1218", "#d8343a"],
     body: [
       { p: "Blood cannot be manufactured and cannot be stockpiled for long. Red cells keep for roughly five to six weeks, platelets for about five days. When information lives in separate registers, a blood bank can watch units approach expiry while a hospital twenty kilometres away is phoning around for the same group." },
       { h: "Every unit, every expiry date", p: "RaktSetu tracks each unit individually, with its collection and expiry time, on an append-only ledger. Stock is always derived from that ledger, so a duplicate submission or a late entry cannot silently corrupt the count." },
@@ -66,8 +60,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-18",
     readMins: 4,
     excerpt: "Platelets are stored warm, agitated and for only about five days. Treating them like red cells guarantees either shortage or waste.",
-    art: "platelet",
-    palette: ["#681861", "#a64d9b"],
     body: [
       { p: "Red cells are refrigerated at 2 to 6 °C and last weeks. Platelets are different: they are kept at 20 to 24 °C with constant gentle agitation and typically expire after about five days, extendable to seven with additional bacterial testing in some systems." },
       { h: "Why a single 'days of stock' number misleads", p: "Ten days of red-cell cover is comfortable. Ten days of platelet cover is impossible, because most of it would expire first. Any planning tool that mixes components into one number hides the real risk." },
@@ -83,8 +75,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-12",
     readMins: 4,
     excerpt: "After the monsoon, demand for platelets climbs across North India. Seasonality belongs in the forecast, not in a phone call on a Friday night.",
-    art: "season",
-    palette: ["#8a3b12", "#d17a3c"],
     body: [
       { p: "In North India, dengue cases typically rise after the monsoon and peak in the autumn months. Hospitals see more requests for platelets during this period, and the pressure arrives fast." },
       { h: "A clinical caveat first", p: "Most people with dengue recover without any transfusion, and clinical guidelines reserve platelet transfusion for patients who meet specific criteria. RaktSetu does not make clinical decisions. It forecasts how much demand a network is likely to see so that supply is ready when clinicians do need it." },
@@ -101,8 +91,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-08",
     readMins: 3,
     excerpt: "Children with thalassemia major need regular transfusions for life. That demand is known weeks in advance, so it should never be a surprise.",
-    art: "calendar",
-    palette: ["#0e6b5c", "#2aa38c"],
     body: [
       { p: "People living with thalassemia major depend on red-cell transfusions every few weeks. India has one of the largest populations of children living with the condition, and their transfusion schedules are known well in advance." },
       { h: "Two kinds of demand", p: "Most demand is statistical: emergencies, surgeries and births that can only be forecast as probabilities. Scheduled transfusions are different. They are deterministic, and treating them as noise makes forecasts worse and planning harder." },
@@ -118,8 +106,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-05",
     readMins: 5,
     excerpt: "Google OR-Tools matches surplus to shortage under real constraints. Then a coordinator reads the reasons and decides.",
-    art: "network",
-    palette: ["#7a1a55", "#b0306f"],
     body: [
       { p: "Knowing that a hospital is at risk is only half the job. The other half is deciding where help should come from, without creating a new shortage somewhere else." },
       { h: "The problem, stated precisely", p: "For each blood group and component, RaktSetu solves a small optimisation problem with Google OR-Tools. It minimises severity-weighted unmet need and travel time, and rewards rescuing units that would otherwise expire." },
@@ -137,8 +123,6 @@ export const ARTICLES: Article[] = [
     date: "2026-11-02",
     readMins: 4,
     excerpt: "In a blood network, a confident wrong number is worse than no answer. Our Gemini copilot can only speak from live data, and is checked when it does.",
-    art: "ai",
-    palette: ["#353535", "#6a6a6a"],
     body: [
       { p: "Large language models are excellent at explaining and summarising, and unreliable at producing precise figures on their own. RaktSetu uses Gemini for the first job and never for the second." },
       { h: "Tools, not memory", p: "The copilot answers questions by calling a small set of read-only tools: the current risk summary, a facility's inventory, nearby availability, open alerts and pending transfers. It cannot change anything; approvals only happen in the Transfer Desk by a person." },
@@ -155,8 +139,6 @@ export const ARTICLES: Article[] = [
     date: "2026-10-29",
     readMins: 3,
     excerpt: "Click a point on the map, add casualties, and watch which facilities would break, along with the plan that keeps trauma centres supplied.",
-    art: "incident",
-    palette: ["#a41e6e", "#e3202a"],
     body: [
       { p: "Road accidents, building collapses and festival-season incidents create sudden, local demand that no history can predict. The question for a coordinator is simple: if it happened right now, where would we run out?" },
       { h: "A what-if, not a guess", p: "The stress test distributes casualties to nearby hospitals according to their capability, converts them into expected units by severity, including early O-negative use before blood typing, and reruns the full risk engine and optimizer on top of today's real stock." },

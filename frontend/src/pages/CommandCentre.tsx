@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Bell, Droplet, Truck } from "lucide-react";
-import { api } from "../api/client";
-import { AsOf, Bar, Card, Countdown, EmptyState, ErrorBox, PageHeader, SevBadge, Skeleton, SOFT, Stat } from "../components/ui";
+import { endpoints } from "../api/endpoints";
+import type { RiskItem } from "../api/types";
+
+import { AsOf, Bar, Card, Countdown, EmptyState, ErrorBox, PageHeader, SevBadge, Skeleton, Stat } from "../components/ui";
+import { SOFT } from "../lib/styles";
 import { COMP_LABEL, hrs, pct } from "../lib/format";
-import { useI18n } from "../lib/i18n";
+import { useI18n } from "../lib/i18n-context";
 import { POLL_MS } from "../lib/live";
 
 const SEV_ORDER = ["critical", "high", "medium", "low"] as const;
@@ -12,15 +15,15 @@ const SEV_ORDER = ["critical", "high", "medium", "low"] as const;
 export default function CommandCentre() {
   const { t } = useI18n();
   const nav = useNavigate();
-  const kpis = useQuery({ queryKey: ["kpis"], queryFn: () => api.get("/api/kpis"), refetchInterval: POLL_MS });
-  const risk = useQuery({ queryKey: ["risk", "top"], queryFn: () => api.get("/api/risk?limit=8"), refetchInterval: POLL_MS });
-  const alerts = useQuery({ queryKey: ["alerts", "top"], queryFn: () => api.get("/api/alerts?limit=5"), refetchInterval: POLL_MS });
+  const kpis = useQuery({ queryKey: ["kpis"], queryFn: endpoints.kpis, refetchInterval: POLL_MS });
+  const risk = useQuery({ queryKey: ["risk", "top"], queryFn: () => endpoints.risk({ limit: 8 }), refetchInterval: POLL_MS });
+  const alerts = useQuery({ queryKey: ["alerts", "top"], queryFn: () => endpoints.alerts({ limit: 5 }), refetchInterval: POLL_MS });
 
   if (kpis.error) return <ErrorBox error={kpis.error} />;
   const k = kpis.data;
   const total = k ? SEV_ORDER.reduce((a, s) => a + (k.severity_counts[s] ?? 0), 0) : 0;
   const top = k?.critical_countdowns?.[0];
-  const go = (r: any) => nav(`/forecast?f=${r.facility_id}&g=${encodeURIComponent(r.abo_rh)}&c=${r.component}`);
+  const go = (r: Pick<RiskItem, "facility_id" | "abo_rh" | "component">) => nav(`/forecast?f=${r.facility_id}&g=${encodeURIComponent(r.abo_rh)}&c=${r.component}`);
 
   return (
     <div className="space-y-6">
@@ -62,7 +65,7 @@ export default function CommandCentre() {
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-line"><th className="px-5 py-2.5">Facility</th><th>Series</th><th className="w-40">Stockout in 24 h</th><th>Time to stockout</th><th className="pr-5 text-right">Units</th></tr></thead>
                 <tbody>
-                  {(risk.data?.items ?? []).map((r: any) => (
+                  {(risk.data?.items ?? []).map((r) => (
                     <tr key={`${r.facility_id}${r.abo_rh}${r.component}`} tabIndex={0} role="link" onClick={() => go(r)} onKeyDown={(e) => e.key === "Enter" && go(r)}
                       className="cursor-pointer border-b border-line-soft last:border-0 hover:bg-canvas">
                       <td className="px-5 py-2.5"><div className="font-medium text-ink">{r.facility_name}</div><div className="text-xs text-muted">{r.facility_code}</div></td>
@@ -98,7 +101,7 @@ export default function CommandCentre() {
           <Card title="Latest alerts" padded={false} action={<Link to="/alerts" className="text-xs font-medium text-accent hover:underline">All</Link>}>
             {(alerts.data ?? []).length === 0 && !alerts.isLoading ? <div className="p-5"><EmptyState title="No open alerts" /></div> : (
               <ul>
-                {(alerts.data ?? []).map((a: any) => (
+                {(alerts.data ?? []).map((a) => (
                   <li key={a.id} className="border-b border-line-soft px-5 py-3 last:border-0">
                     <SevBadge sev={a.severity} />
                     <p className="mt-1 line-clamp-2 text-xs text-body">{a.message}</p>

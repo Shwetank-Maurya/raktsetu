@@ -1,27 +1,29 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, MailCheck, ShieldCheck, XCircle } from "lucide-react";
-import { api } from "../api/client";
-import { Button, ErrorBox, inputCls, Select, Spinner, Tabs } from "../components/ui";
-import { useAuth } from "../lib/auth";
+import { endpoints } from "../api/endpoints";
+
+import { Button, ErrorBox, Select, Spinner, Tabs } from "../components/ui";
+import { inputCls } from "../lib/styles";
+import { useAuth } from "../lib/auth-context";
 import { auth } from "../lib/firebase";
 
 /** Shown to signed-up accounts that have no role yet: request access, then wait for approval. */
 export default function PendingAccess() {
   const { user, refreshAccess, logout } = useAuth();
   const qc = useQueryClient();
-  const mine = useQuery({ queryKey: ["access-mine"], queryFn: () => api.get("/api/access-requests/mine") });
-  const facs = useQuery({ queryKey: ["public-facilities"], queryFn: () => api.get("/api/public/facilities"), staleTime: 3_600_000 });
+  const mine = useQuery({ queryKey: ["access-mine"], queryFn: endpoints.myAccessRequest });
+  const facs = useQuery({ queryKey: ["public-facilities"], queryFn: endpoints.publicFacilities, staleTime: 3_600_000 });
   const [role, setRole] = useState("hospital_user");
   const [fid, setFid] = useState("");
-  const [name, setName] = useState("");
-  // The display name can arrive after first render (token refresh after sign-up); prefill once known.
-  useEffect(() => { if (!name && user?.name && !user.name.includes("@")) setName(user.name); }, [user?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [nameInput, setName] = useState<string | null>(null);
+  // Default to the account display name until the user types (the name can arrive after first render).
+  const name = nameInput ?? (user?.name && !user.name.includes("@") ? user.name : "");
   const [note, setNote] = useState("");
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
   const [checkError, setCheckError] = useState<unknown>(null);
   const submit = useMutation({
-    mutationFn: () => api.post("/api/access-requests", { name, requested_role: role, facility_id: Number(fid), note: note || null }),
+    mutationFn: () => endpoints.requestAccess({ name, requested_role: role, facility_id: Number(fid), note: note || null }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["access-mine"] }),
   });
   const check = async () => {
@@ -34,7 +36,7 @@ export default function PendingAccess() {
     } catch (e) { setCheckError(e); }
   };
 
-  const options = (facs.data ?? []).filter((f: any) => role === "bank_manager" ? f.type === "blood_bank" : f.type === "hospital");
+  const options = (facs.data ?? []).filter((f) => role === "bank_manager" ? f.type === "blood_bank" : f.type === "hospital");
   const req = mine.data;
   const verified = auth?.currentUser?.emailVerified;
   const onSubmit = (e: FormEvent) => { e.preventDefault(); submit.mutate(); };
@@ -74,7 +76,7 @@ export default function PendingAccess() {
                 <div className="mt-1"><Tabs value={role} onChange={(v) => { setRole(v); setFid(""); }} options={[["hospital_user", "Hospital"], ["bank_manager", "Blood bank"]]} /></div>
               </div>
               <Select label="Facility" value={fid} onChange={setFid}
-                options={[["", "Select your facility"], ...options.map((f: any) => [String(f.id), `${f.name} · ${f.district ?? ""}`] as [string, string])]} />
+                options={[["", "Select your facility"], ...options.map((f) => [String(f.id), `${f.name} · ${f.district ?? ""}`] as [string, string])]} />
               <label className="block text-xs font-medium text-body">Note for the coordinator <span className="font-normal text-faint">(optional)</span>
                 <input className={`${inputCls} mt-1`} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Transfusion officer, night shift" />
               </label>

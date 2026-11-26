@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { ARTICLES, bySlug, fmtDate } from "../content/articles";
-import { useAuth } from "../lib/auth";
+import { useAuth } from "../lib/auth-context";
 import { contentVars, fill, usePublicSummary } from "../lib/summary";
 
 export default function ArticlePage() {
