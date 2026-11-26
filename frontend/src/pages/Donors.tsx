@@ -18,8 +18,8 @@ export default function Donors() {
   const inScope = (facs.data ?? []).filter((f: any) => f.in_scope);
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div><h1 className="text-xl font-bold">{t("donors")}</h1>
-        <p className="text-sm text-slate-500">Eligible donors are selected in code (consent, not opted out, donation interval, distance). Gemini only writes the message. First names only; phones stay hashed on the server. Sending is simulated in the demo.</p></div>
+      <div><h1>{t("donors")}<span className="accent">the right donors, <i>at</i> the right time</span></h1>
+        <p className="text-sm text-[#6b6b6b]">Eligible donors are selected in code (consent, not opted out, donation interval, distance). Gemini only writes the message. First names only; phones stay hashed on the server. Sending is simulated in the demo.</p></div>
       <Card>
         <div className="flex flex-wrap items-end gap-3">
           <Select label="Facility" value={fid} onChange={setFid} options={inScope.map((f: any) => [String(f.id), `${f.code} ${f.name}`] as [string, string])} />
@@ -32,11 +32,11 @@ export default function Donors() {
       </Card>
       {draft.data && (
         <Card title={`${draft.data.eligible_donors} eligible ${draft.data.abo_rh} donors near ${draft.data.facility}`}>
-          <div className="rounded-lg bg-slate-50 p-3 text-sm">{draft.data.template}</div>
-          <div className="mt-1 text-[11px] text-slate-500">{draft.data.fallback ? "Template message (Gemini unavailable)" : "Drafted by Gemini, checked for placeholder and opt-out line"} · {draft.data.sending}</div>
-          <h3 className="mt-3 text-xs font-semibold text-slate-600">Previews</h3>
-          <ul className="mt-1 space-y-2 text-sm">{draft.data.previews.map((p: any) => <li key={p.donor_id} className="rounded border border-slate-200 p-2"><span className="text-xs text-slate-500">{p.first_name} · {p.distance_km} km</span><div>{p.message}</div></li>)}</ul>
-          <p className="mt-2 text-xs text-slate-500">{draft.data.privacy}</p>
+          <div className="rounded-br-2xl bg-brand-blush p-3 text-sm">{draft.data.template}</div>
+          <div className="mt-1 text-[11px] text-[#6b6b6b]">{draft.data.fallback ? "Template message (Gemini unavailable)" : "Drafted by Gemini, checked for placeholder and opt-out line"} · {draft.data.sending}</div>
+          <h3 className="mt-3 text-xs font-semibold text-brand-body">Previews</h3>
+          <ul className="mt-1 space-y-2 text-sm">{draft.data.previews.map((p: any) => <li key={p.donor_id} className="rounded border border-slate-200 p-2"><span className="text-xs text-[#6b6b6b]">{p.first_name} · {p.distance_km} km</span><div>{p.message}</div></li>)}</ul>
+          <p className="mt-2 text-xs text-[#6b6b6b]">{draft.data.privacy}</p>
         </Card>
       )}
     </div>

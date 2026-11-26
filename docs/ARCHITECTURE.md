@@ -329,6 +329,25 @@ Donors (appeal drafts), Register (photo -> review table -> commit), Evaluation (
 history), DataQuality (freshness, rejects, audit). Hindi/English toggle; Okabe-Ito colour-blind palette
 with text + shape on every badge; skip link; keyboard-closable drawer; mobile nav.
 
+**Visual system** (inspired by the look of a large public-hospital website, own brand and assets only):
+tokens in `src/index.css` `@theme` - plum `#881E5D` / deep plum `#681861`, crimson `#B30F14`, blush
+`#F8F5F5` and pink `#F7E9E9` section backgrounds, ink `#353535`, body `#4F4F4F`, blue gradient hero.
+Type: Source Sans 3 (bold, tight tracking) + Newsreader light serif accent line (`<span class="accent">`
+inside page `<h1>`, `SectionTitle` component). Layout (`components/Layout.tsx`): dismissible plum
+announcement bar, sticky white two-row header (utility links + pill CTAs Copilot/Stress test; main nav),
+magenta-to-red CTA band and blush footer. Components (`components/ui.tsx`): pill buttons with chevrons,
+panels with one large rounded corner (`rounded-br-[2rem]`), gradient tiles with `rounded-tr`. Severity
+colours remain Okabe-Ito (data), separate from brand colours (chrome).
+
+**Public site (signed out)** - `App.tsx` renders `components/PublicLayout.tsx` with: `pages/Landing.tsx`
+(rotating hero carousel with pause control, live snapshot from the unauthenticated aggregate-only
+`GET /api/public/summary`, role cards, network split section, how-it-works steps, capability tiles,
+measured results, latest articles, responsible-AI principles), `pages/Articles.tsx` (category filter,
+featured article) and `pages/ArticlePage.tsx` (`/articles/:slug`), and `pages/Login.tsx` (`/login?role=`
+pre-selects a demo role). Any other path redirects to `/login`. Article content lives in
+`src/content/articles.ts` (8 articles; plain data, CMS-ready). Photos are replaced by original SVG
+illustrations in `components/Art.tsx`. Signed-in users can also read articles inside the app.
+
 ## 12. Testing (`backend/tests`, 127 tests, ~4 s)
 - `test_risk_sim.py`: vectorised FEFO == brute-force oracle (Hypothesis); more stock never raises risk;
   longer lead never lowers it; mean (not median) drives demand; hysteresis; fallback; confidence.

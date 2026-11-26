@@ -29,7 +29,7 @@ export default function Forecast() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <h1 className="mr-auto text-xl font-bold">{t("forecast")}</h1>
+        <h1 className="mr-auto">{t("forecast")}<span className="accent">demand, <i>with</i> uncertainty</span></h1>
         <Select label="Facility" value={f} onChange={(v) => set("f", v)} options={inScope.map((x: any) => [String(x.id), `${x.code} ${x.name}`] as [string, string])} />
         <Select label="Group" value={g} onChange={(v) => set("g", v)} options={[...GROUPS]} />
         <Select label="Component" value={c} onChange={(v) => set("c", v)} options={COMPONENTS.map((x) => [x, COMP_LABEL[x]] as [string, string])} />
@@ -66,11 +66,11 @@ export default function Forecast() {
           <Card title="Why this forecast? Active drivers">
             <div className="flex flex-wrap gap-2">
               {(q.data.drivers ?? []).map((d: any, i: number) => (
-                <span key={i} className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs">{d.label}</span>
+                <span key={i} className="rounded-full border border-[#cfc6c6] bg-brand-blush px-3 py-1 text-xs">{d.label}</span>
               ))}
-              {(!q.data.drivers || q.data.drivers.length === 0) && <span className="text-sm text-slate-500">No drivers recorded.</span>}
+              {(!q.data.drivers || q.data.drivers.length === 0) && <span className="text-sm text-[#6b6b6b]">No drivers recorded.</span>}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Festival dates come from Google Calendar public holidays (static fallback); dengue/monsoon index from the season curve and Open-Meteo rainfall when available.</p>
+            <p className="mt-2 text-xs text-[#6b6b6b]">Festival dates come from Google Calendar public holidays (static fallback); dengue/monsoon index from the season curve and Open-Meteo rainfall when available.</p>
           </Card>
         </>
       )}

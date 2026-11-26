@@ -167,3 +167,10 @@ async def test_manual_overrequest_is_flagged(client, db):
 async def test_health_endpoints(client, db):
     assert (await client.get("/healthz")).json()["status"] == "ok"
     assert (await client.get("/readyz")).json()["database"] == "ok"
+
+
+async def test_public_summary_is_aggregate_only(client, db):
+    r = await client.get("/api/public/summary")  # no token
+    body = r.json()
+    assert r.status_code == 200 and body["facilities"] == 3 and body["data"] == "synthetic"
+    assert not any(k in str(body) for k in ("Hospital One", "unit_ids", "phone"))

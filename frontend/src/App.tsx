@@ -4,6 +4,8 @@ import Layout from "./components/Layout";
 import { Spinner } from "./components/ui";
 import { useAuth } from "./lib/auth";
 import { DEFAULT_FLAGS, loadFlags, type Flags } from "./lib/firebase";
+import PublicLayout from "./components/PublicLayout";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 
 const CommandCentre = lazy(() => import("./pages/CommandCentre"));
@@ -20,13 +22,30 @@ const DataQuality = lazy(() => import("./pages/DataQuality"));
 const Register = lazy(() => import("./pages/Register"));
 const Donors = lazy(() => import("./pages/Donors"));
 const Inventory = lazy(() => import("./pages/Inventory"));
+const Articles = lazy(() => import("./pages/Articles"));
+const ArticlePage = lazy(() => import("./pages/ArticlePage"));
 
 export default function App() {
   const { user, loading } = useAuth();
   const [flags, setFlags] = useState<Flags>(DEFAULT_FLAGS);
   useEffect(() => { loadFlags().then(setFlags); }, []); // Firebase Remote Config feature flags
   if (loading) return <Spinner label="Starting RaktSetu" />;
-  if (!user) return <Login />;
+  if (!user) {
+    // Public site: landing page, articles and sign-in. App routes redirect to sign-in.
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route index element={<Landing />} />
+            <Route path="articles" element={<Articles />} />
+            <Route path="articles/:slug" element={<ArticlePage />} />
+            <Route path="login" element={<Login />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    );
+  }
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>
@@ -45,6 +64,9 @@ export default function App() {
           {flags.register_ocr && <Route path="register" element={<Register />} />}
           <Route path="evaluation" element={<Evaluation />} />
           <Route path="quality" element={<DataQuality />} />
+          <Route path="articles" element={<Articles />} />
+          <Route path="articles/:slug" element={<ArticlePage />} />
+          <Route path="login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       </Routes>

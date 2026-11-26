@@ -23,12 +23,12 @@ export default function Register() {
   const inScope = (facs.data ?? []).filter((f: any) => f.in_scope);
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div><h1 className="text-xl font-bold">{t("register")}: photo of a paper stock register → structured inventory</h1>
-        <p className="text-sm text-slate-500">Gemini vision extracts rows with a strict JSON schema and per-field confidence. Low-confidence fields are highlighted and block commit until a human edits them. Nothing is committed automatically.</p></div>
+      <div><h1>{t("register")}: photo of a paper stock register → structured inventory<span className="accent">paper register <i>to</i> live stock</span></h1>
+        <p className="text-sm text-[#6b6b6b]">Gemini vision extracts rows with a strict JSON schema and per-field confidence. Low-confidence fields are highlighted and block commit until a human edits them. Nothing is committed automatically.</p></div>
       <Card>
         <div className="flex flex-wrap items-end gap-3">
           <Select label="Facility" value={fid} onChange={setFid} options={[["", "choose"], ...inScope.map((f: any) => [String(f.id), `${f.code} ${f.name}`] as [string, string])]} />
-          <label className="text-xs text-slate-600">Register photo<input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block text-sm" /></label>
+          <label className="text-xs text-brand-body">Register photo<input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block text-sm" /></label>
           <Button onClick={() => extract.mutate()} disabled={!file || !fid || extract.isPending}>{extract.isPending ? "Reading with Gemini..." : "Extract"}</Button>
         </div>
         <ErrorBox error={extract.error} />
@@ -36,7 +36,7 @@ export default function Register() {
       {rows.length > 0 && (
         <Card title="Review extracted rows">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs text-slate-500"><th>Group</th><th>Component</th><th>Qty</th><th>Donation ID</th><th>Collected</th><th>Expires</th><th>Issues</th></tr></thead>
+            <thead><tr className="text-left text-xs text-[#6b6b6b]"><th>Group</th><th>Component</th><th>Qty</th><th>Donation ID</th><th>Collected</th><th>Expires</th><th>Issues</th></tr></thead>
             <tbody>{rows.map((r, i) => {
               const low = (k: string) => (r.low_confidence_fields.includes(k) ? "ring-2 ring-[#E69F00] bg-amber-50" : "");
               return (

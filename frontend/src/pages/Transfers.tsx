@@ -43,20 +43,20 @@ export default function Transfers() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h1 className="text-xl font-bold">{t("transfers")}</h1><p className="text-sm text-slate-500">OR-Tools plan: shortage first, shelf life on arrival, cold-chain limits, donor safety stock. Humans approve.</p></div>
+        <div><h1>{t("transfers")}<span className="accent">optimised, <i>then</i> human-approved</span></h1><p className="text-sm text-[#6b6b6b]">OR-Tools plan: shortage first, shelf life on arrival, cold-chain limits, donor safety stock. Humans approve.</p></div>
         {isNet && <Button onClick={() => plan.mutate()} disabled={plan.isPending}>{plan.isPending ? "Optimising..." : "Re-run optimizer"}</Button>}
       </div>
       <ErrorBox error={act.error || plan.error} />
       <div className="flex flex-wrap items-center gap-2">
-        {TABS.map(([k, label]) => <button key={k} onClick={() => setTab(k)} className={`rounded-lg px-3 py-1 text-sm ${tab === k ? "bg-rose-700 text-white" : "bg-white ring-1 ring-slate-300"}`}>{label}</button>)}
+        {TABS.map(([k, label]) => <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === k ? "bg-brand-plum text-white" : "bg-white ring-1 ring-[#cfc6c6]"}`}>{label}</button>)}
         {tab === "proposed" && <label className="ml-2 flex items-center gap-1 text-sm"><input type="checkbox" checked={onlyUrgent} onChange={(e) => setOnlyUrgent(e.target.checked)} /> urgent + rescue only</label>}
-        <span className="text-xs text-slate-500">{rows.length} shown</span>
+        <span className="text-xs text-[#6b6b6b]">{rows.length} shown</span>
       </div>
       {q.isLoading ? <Spinner /> : (
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-xs text-slate-500"><th>Priority</th><th>Move</th><th>From → To</th><th>ETA</th><th>Life on arrival</th><th>Saves</th><th>Status</th><th /></tr></thead>
+              <thead><tr className="text-left text-xs text-[#6b6b6b]"><th>Priority</th><th>Move</th><th>From → To</th><th>ETA</th><th>Life on arrival</th><th>Saves</th><th>Status</th><th /></tr></thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-t border-slate-100 align-top">
@@ -66,7 +66,7 @@ export default function Transfers() {
                       {r.flagged_for_review && <div className="mt-0.5 rounded bg-red-100 px-1 text-xs text-red-800">over-request flagged</div>}
                       {r.kind === "rescue" && <div className="mt-0.5 text-xs text-emerald-700">rescue near-expiry</div>}
                     </td>
-                    <td className="py-2">{r.from_name}<div className="text-xs text-slate-500">→ {r.to_name}</div></td>
+                    <td className="py-2">{r.from_name}<div className="text-xs text-[#6b6b6b]">→ {r.to_name}</div></td>
                     <td className="py-2">{Math.round(r.eta_minutes)} min<div className="text-[10px] text-slate-400">{r.eta_source}</div></td>
                     <td className="py-2">{Math.round(r.min_life_on_arrival_h)} h</td>
                     <td className="py-2 text-xs">{r.reason?.saves ? <>{r.reason.saves.shortage_units} short · {r.reason.saves.wastage_units} waste</> : "-"}</td>
@@ -74,7 +74,7 @@ export default function Transfers() {
                     <td className="py-2 text-right"><Button variant="secondary" onClick={() => { setAck(false); setOpen(r); }}>{t("why")}</Button></td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={8} className="py-4 text-center text-slate-500">Nothing here.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={8} className="py-4 text-center text-[#6b6b6b]">Nothing here.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -83,12 +83,12 @@ export default function Transfers() {
       <Drawer open={!!open} onClose={() => setOpen(null)} title={open ? `${open.quantity} x ${open.abo_rh} ${COMP_LABEL[open.component]}` : ""}>
         {open && (
           <div className="space-y-4 text-sm">
-            <div className="rounded-lg bg-slate-50 p-3">
+            <div className="rounded-br-2xl bg-brand-blush p-3">
               {explain.isLoading ? <Spinner label="Gemini is explaining" /> : explain.data && (
                 <>
                   <div className="font-semibold">{explain.data.summary}</div>
                   <ul className="mt-2 list-disc space-y-1 pl-5">{explain.data.bullets.map((b: string, i: number) => <li key={i}>{b}</li>)}</ul>
-                  <div className="mt-2 text-[11px] text-slate-500">{explain.data.fallback ? "Template explanation (Gemini unavailable or failed the number check)" : "Explained by Gemini from the optimizer's reason JSON; every number verified against it."}</div>
+                  <div className="mt-2 text-[11px] text-[#6b6b6b]">{explain.data.fallback ? "Template explanation (Gemini unavailable or failed the number check)" : "Explained by Gemini from the optimizer's reason JSON; every number verified against it."}</div>
                 </>
               )}
             </div>

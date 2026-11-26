@@ -20,8 +20,8 @@ export default function Evaluation() {
   const groups = q.data.backtest?.metrics ?? {};
   return (
     <div className="space-y-4">
-      <div><h1 className="text-xl font-bold">{t("eval")}</h1>
-        <p className="text-sm text-slate-500">All numbers are measured on synthetic ground truth (see Data Card) and recomputed by the pipeline - they are not hand-entered.</p></div>
+      <div><h1>{t("eval")}<span className="accent">measured, <i>not</i> claimed</span></h1>
+        <p className="text-sm text-[#6b6b6b]">All numbers are measured on synthetic ground truth (see Data Card) and recomputed by the pipeline - they are not hand-entered.</p></div>
       {bt && (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -33,7 +33,7 @@ export default function Evaluation() {
           <Card title="Model selection per series group (pinball loss; lower is better)">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-slate-500"><th>Group</th><th>Chosen</th><th>seasonal naive</th><th>moving avg 28</th><th>Croston SBA</th><th>LightGBM quantile</th><th>width scale</th></tr></thead>
+                <thead><tr className="text-left text-[#6b6b6b]"><th>Group</th><th>Chosen</th><th>seasonal naive</th><th>moving avg 28</th><th>Croston SBA</th><th>LightGBM quantile</th><th>width scale</th></tr></thead>
                 <tbody>{Object.entries(groups).map(([g, m]: [string, any]) => (
                   <tr key={g} className="border-t border-slate-100"><td className="font-semibold">{g}</td><td>{q.data.backtest.chosen[g]}</td>
                     {["seasonal_naive", "moving_avg_28", "croston_sba", "lgbm_quantile"].map((k) => <td key={k} className={q.data.backtest.chosen[g] === k ? "font-bold text-emerald-700" : ""}>{m[k]?.pinball ?? "-"}</td>)}
@@ -41,7 +41,7 @@ export default function Evaluation() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-slate-500">{bt.coverage_note}</p>
+            <p className="mt-2 text-xs text-[#6b6b6b]">{bt.coverage_note}</p>
           </Card>
         </>
       )}
@@ -53,20 +53,20 @@ export default function Evaluation() {
                 <Bar dataKey="Static threshold" fill="#999999" /><Bar dataKey="RaktSetu" fill="#009E73" /></BarChart></ResponsiveContainer>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="rounded-lg bg-emerald-50 p-3"><div className="text-2xl font-bold text-emerald-800">-{rp.improvement.wastage_reduction_pct}%</div>wastage</div>
-              <div className="rounded-lg bg-emerald-50 p-3"><div className="text-2xl font-bold text-emerald-800">-{rp.improvement.unmet_reduction_pct}%</div>unmet demand (fulfilment {rp.policy_a.fulfilment_pct}% → {rp.policy_b.fulfilment_pct}%)</div>
-              <div className="rounded-lg bg-slate-50 p-3 text-xs">
+              <div className="rounded-br-2xl bg-emerald-50 p-3"><div className="text-2xl font-bold text-emerald-800">-{rp.improvement.wastage_reduction_pct}%</div>wastage</div>
+              <div className="rounded-br-2xl bg-emerald-50 p-3"><div className="text-2xl font-bold text-emerald-800">-{rp.improvement.unmet_reduction_pct}%</div>unmet demand (fulfilment {rp.policy_a.fulfilment_pct}% → {rp.policy_b.fulfilment_pct}%)</div>
+              <div className="rounded-br-2xl bg-brand-blush p-3 text-xs">
                 Alerts: {rp.policy_a.alerts} → {rp.policy_b.alerts} ({Math.round(rp.policy_a.alerts / Math.max(1, rp.policy_b.alerts))}x fewer).
                 48 h recall {rp.policy_a.alert_recall_48h} → {rp.policy_b.alert_recall_48h}; precision {rp.policy_a.alert_precision} → {rp.policy_b.alert_precision}.
                 Honest limitation: remaining stockouts are mostly rare-group bursts no calibrated model can flag without alert fatigue.
               </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-500">{rp.method}</p>
+          <p className="mt-2 text-xs text-[#6b6b6b]">{rp.method}</p>
         </Card>
       )}
       <Card title="Scheduled job history (Cloud Scheduler → /internal/jobs/run-cycle)">
-        <table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th>Started</th><th>Status</th><th>Duration</th><th>Series</th><th>Proposals</th><th>Trigger</th></tr></thead>
+        <table className="w-full text-xs"><thead><tr className="text-left text-[#6b6b6b]"><th>Started</th><th>Status</th><th>Duration</th><th>Series</th><th>Proposals</th><th>Trigger</th></tr></thead>
           <tbody>{q.data.job_runs.map((j: any) => (
             <tr key={j.id} className="border-t border-slate-100"><td>{ist(j.started_at)}</td><td>{j.status}</td><td>{j.stats?.duration_s ?? "-"} s</td><td>{j.stats?.risk_series ?? "-"}</td><td>{j.stats?.plan?.proposals ?? "-"}</td><td>{j.stats?.trigger ?? "-"}</td></tr>))}
           </tbody></table>

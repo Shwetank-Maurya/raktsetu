@@ -35,11 +35,11 @@ export default function RiskMap() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">{t("map")}</h1>
+        <h1>{t("map")}<span className="accent">live view <i>of</i> the network</span></h1>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-1"><input type="checkbox" checked={heat} onChange={(e) => setHeat(e.target.checked)} /> Risk heat layer</label>
           <label className="flex items-center gap-1"><input type="checkbox" checked={routes} onChange={(e) => setRoutes(e.target.checked)} /> Transfer routes</label>
-          <select aria-label="Heat component" value={comp} onChange={(e) => setComp(e.target.value)} className="rounded border border-slate-300 px-2 py-1 text-sm">
+          <select aria-label="Heat component" value={comp} onChange={(e) => setComp(e.target.value)} className="rounded border border-[#cfc6c6] px-2 py-1 text-sm">
             <option value="">All components</option>{COMPONENTS.map((c) => <option key={c} value={c}>{COMP_LABEL[c]}</option>)}
           </select>
         </div>
@@ -47,23 +47,23 @@ export default function RiskMap() {
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <MapView markers={markers} heat={heatQ.data?.points ?? []} routes={routeData} showHeat={heat} showRoutes={routes} onMarkerClick={(id) => setSel(Number(id))} height={580} />
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-brand-body">
             {(["critical", "high", "medium", "low"] as const).map((s) => <span key={s} className="flex items-center gap-1"><SevBadge sev={s} label={t(s)} /></span>)}
             <span>B = blood bank · routes: blue proposed, green approved, pink in transit · {mapsProvider}</span>
           </div>
         </div>
         <Card title={selF ? selF.name : "Select a facility"}>
-          {!selF ? <p className="text-sm text-slate-500">Click a marker to see live inventory and risk.</p> : (
+          {!selF ? <p className="text-sm text-[#6b6b6b]">Click a marker to see live inventory and risk.</p> : (
             <div className="space-y-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2"><SevBadge sev={selF.severity} /> <span className="text-slate-500">{selF.code} · {selF.subtype}</span> <Freshness hours={selF.freshness_h} /></div>
+              <div className="flex flex-wrap items-center gap-2"><SevBadge sev={selF.severity} /> <span className="text-[#6b6b6b]">{selF.code} · {selF.subtype}</span> <Freshness hours={selF.freshness_h} /></div>
               <table className="w-full text-xs">
-                <thead><tr className="text-left text-slate-500"><th>Group</th>{["RBC", "PLT", "FFP"].map((c) => <th key={c}>{c}</th>)}</tr></thead>
+                <thead><tr className="text-left text-[#6b6b6b]"><th>Group</th>{["RBC", "PLT", "FFP"].map((c) => <th key={c}>{c}</th>)}</tr></thead>
                 <tbody>{GROUPS.map((g) => <tr key={g} className="border-t border-slate-100"><td className="font-semibold">{g}</td>{["RBC", "PLT", "FFP"].map((c) => <td key={c}>{cells[`${g}|${c}`]?.usable ?? 0}</td>)}</tr>)}</tbody>
               </table>
               <div>
-                <div className="mb-1 text-xs font-semibold text-slate-600">Top risks</div>
+                <div className="mb-1 text-xs font-semibold text-brand-body">Top risks</div>
                 {(risk.data?.items ?? []).slice(0, 6).map((r: any) => (
-                  <Link key={r.abo_rh + r.component} to={`/forecast?f=${r.facility_id}&g=${encodeURIComponent(r.abo_rh)}&c=${r.component}`} className="flex items-center justify-between rounded px-1 py-1 hover:bg-slate-50">
+                  <Link key={r.abo_rh + r.component} to={`/forecast?f=${r.facility_id}&g=${encodeURIComponent(r.abo_rh)}&c=${r.component}`} className="flex items-center justify-between rounded px-1 py-1 hover:bg-brand-blush">
                     <span><SevBadge sev={r.severity} /> {r.abo_rh} {r.component}</span><span className="text-xs">{pct(r.p_stockout_24)} / 24h · {hrs(r.tts_p50)}</span>
                   </Link>
                 ))}

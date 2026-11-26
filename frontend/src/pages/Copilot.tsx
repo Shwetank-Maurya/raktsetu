@@ -28,20 +28,20 @@ export default function Copilot() {
   };
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div><h1 className="text-xl font-bold">{t("copilot")}</h1>
-        <p className="text-sm text-slate-500">Gemini answers only from read-only tool data. Every number is checked against the tool results; if a number cannot be verified, a template answer is shown instead.</p></div>
+      <div><h1>{t("copilot")}<span className="accent">grounded <i>in</i> live data</span></h1>
+        <p className="text-sm text-[#6b6b6b]">Gemini answers only from read-only tool data. Every number is checked against the tool results; if a number cannot be verified, a template answer is shown instead.</p></div>
       <Card>
         <div className="max-h-[55vh] min-h-[300px] space-y-3 overflow-y-auto" aria-live="polite">
           {msgs.length === 0 && (
-            <div className="flex flex-wrap gap-2">{SUGGEST[lang].map((s) => <button key={s} onClick={() => send(s)} className="rounded-full border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50">{s}</button>)}</div>
+            <div className="flex flex-wrap gap-2">{SUGGEST[lang].map((s) => <button key={s} onClick={() => send(s)} className="rounded-full border border-[#cfc6c6] px-3 py-1 text-xs hover:bg-brand-blush">{s}</button>)}</div>
           )}
           {msgs.map((m, i) => (
             <div key={i} className={m.role === "user" ? "text-right" : ""}>
-              <div className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-xl px-3 py-2 text-left text-sm ${m.role === "user" ? "bg-rose-700 text-white" : "bg-slate-100"}`}>
-                {m.role === "model" && <Bot size={14} className="mb-1 inline text-rose-700" />} {m.text}
+              <div className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-xl px-3 py-2 text-left text-sm ${m.role === "user" ? "bg-brand-plum text-white" : "bg-brand-panel"}`}>
+                {m.role === "model" && <Bot size={14} className="mb-1 inline text-brand-plum" />} {m.text}
               </div>
               {m.meta && (
-                <div className="mt-1 text-[11px] text-slate-500">
+                <div className="mt-1 text-[11px] text-[#6b6b6b]">
                   {m.meta.fallback ? "template answer (Gemini off / unverified)" : "Gemini, numbers verified"} · tools: {m.meta.tools_used.join(", ")}
                   <details className="inline"><summary className="ml-1 inline cursor-pointer underline">sources</summary>
                     <pre className="mt-1 max-h-48 overflow-auto rounded bg-slate-900 p-2 text-left text-[10px] text-slate-100">{JSON.stringify(m.meta.tool_payloads, null, 1)}</pre></details>
@@ -49,12 +49,12 @@ export default function Copilot() {
               )}
             </div>
           ))}
-          {chat.isPending && <div className="text-sm text-slate-500">Thinking with tools...</div>}
+          {chat.isPending && <div className="text-sm text-[#6b6b6b]">Thinking with tools...</div>}
         </div>
         <ErrorBox error={chat.error} />
         <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
           <input aria-label="Ask the copilot" value={input} onChange={(e) => setInput(e.target.value)} maxLength={1000}
-            placeholder={lang === "hi" ? "हिंदी या अंग्रेज़ी में पूछें..." : "Ask in English or Hindi..."} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            placeholder={lang === "hi" ? "हिंदी या अंग्रेज़ी में पूछें..." : "Ask in English or Hindi..."} className="flex-1 rounded-full border border-[#cfc6c6] px-3 py-2 text-sm" />
           <Button type="submit" disabled={chat.isPending}><Send size={14} /> Send</Button>
         </form>
       </Card>

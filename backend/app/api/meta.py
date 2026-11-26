@@ -53,6 +53,38 @@ async def meta() -> dict:
     }
 
 
+@router.get("/api/public/summary", tags=["meta"])
+async def public_summary(session: AsyncSession = Depends(get_session)) -> dict:
+    """Unauthenticated landing-page snapshot: network-level aggregates only (no facility, unit or
+    donor data), all derived from the synthetic demo network."""
+    from sqlalchemy import func
+
+    from app.db.models import EvalResult, JobRun, RiskSnapshot
+
+    facilities = (await session.execute(select(func.count()).select_from(Facility).where(Facility.active.is_(True)))).scalar() or 0
+    run = (await session.execute(select(RiskSnapshot.run_id, RiskSnapshot.created_at).order_by(RiskSnapshot.id.desc()).limit(1))).first()
+    sev: dict[str, int] = {}
+    series = 0
+    if run:
+        rows = (await session.execute(select(RiskSnapshot.severity, func.count()).where(RiskSnapshot.run_id == run[0])
+                                      .group_by(RiskSnapshot.severity))).all()
+        sev = {s: n for s, n in rows}
+        series = sum(sev.values())
+    out: dict = {"facilities": facilities, "series_monitored": series, "severity_counts": sev,
+                 "as_of": run[1] if run else None, "data": "synthetic"}
+    for kind in ("backtest", "replay"):
+        r = (await session.execute(select(EvalResult).where(EvalResult.kind == kind).order_by(EvalResult.id.desc()).limit(1))).scalar_one_or_none()
+        if r and kind == "backtest":
+            o = r.payload.get("overall", {})
+            out["forecast"] = {"wape_improvement_pct": o.get("wape_improvement_pct"), "coverage80": o.get("coverage80_calibrated")}
+        if r and kind == "replay":
+            out["replay"] = r.payload.get("improvement", {}) | {"days": r.payload.get("days"),
+                                                                "alerts_a": r.payload["policy_a"]["alerts"], "alerts_b": r.payload["policy_b"]["alerts"]}
+    last = (await session.execute(select(JobRun.finished_at).where(JobRun.status == "ok").order_by(JobRun.started_at.desc()).limit(1))).scalar()
+    out["last_cycle"] = last
+    return out
+
+
 class DemoLogin(BaseModel):
     user: str
 
