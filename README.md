@@ -9,6 +9,71 @@ constraint-checked action.
 > Synthetic data only (see [Data Card](docs/DATA_CARD.md)). Decision support, not a medical device:
 > humans approve every transfer; substitutions need clinician sign-off.
 
+## Chosen vertical
+
+**Healthcare operations — blood-bank and hospital supply coordination.** RaktSetu addresses a
+network problem: a shortage at one facility can occur alongside avoidable expiry at another because
+stock, demand signals and transfer decisions are fragmented. The product is designed for hospital
+transfusion teams, blood-bank managers and regional coordinators—not patients—and supports their
+decisions without replacing clinical judgement.
+
+## Approach and logic
+
+RaktSetu uses a closed-loop operational approach rather than a simple low-stock alert:
+
+1. **Record truth at unit level.** Every donation, issue, reservation, expiry and transfer is written
+   to an append-only inventory ledger. The current stock status is derived from that ledger, with
+   FEFO (first-expiry, first-out) used throughout.
+2. **Forecast uncertain demand.** Historical consumption, weekday patterns, scheduled demand,
+   festivals and seasonal signals produce 14-day q10/q50/q90 forecasts plus a mean estimate for
+   each facility, blood group and component.
+3. **Simulate stockout risk.** The risk engine runs 2,000 FEFO-aware demand paths per series. It
+   accounts for remaining shelf life, forecast uncertainty, known incoming stock and transfer lead
+   time to calculate time-to-stockout and 24/48/72-hour stockout probability.
+4. **Optimize a feasible response.** When risk or expiry warrants action, an OR-Tools MIP proposes
+   transfers under ABO/Rh compatibility, minimum life-on-arrival, cold-chain travel time, donor
+   safety stock and stability constraints. Non-identical blood-group substitutions are explicitly
+   marked for clinician approval.
+5. **Keep humans in control.** A coordinator approves or rejects a proposal; the sending facility
+   dispatches and the receiving facility confirms receipt. Every write is idempotent and audited.
+
+## How the solution works
+
+```text
+Facility stock + consumption history
+        ↓
+Append-only unit ledger → forecast demand → simulate FEFO stockout risk
+        ↓                                      ↓
+Coordinator dashboard ← optimized, explainable transfer proposals
+        ↓
+Human approval → dispatch → receipt → updated ledger and live risk view
+```
+
+- **Operations workspace:** role-scoped React dashboards show risk, expiry exposure, facility stock,
+  transfer approvals, evaluation results and a mass-casualty what-if tool.
+- **Identity and onboarding:** Firebase Authentication creates an account; the user requests a
+  hospital or blood-bank role; a regional coordinator approves it; Firebase custom claims then scope
+  the user to the appropriate facility or region.
+- **Responsible AI assistance:** Gemini can explain an approved-data plan, draft consent-based donor
+  appeals and extract a paper register. It may only call read-only tools; numerical statements are
+  checked against tool output and every feature has a non-AI template fallback.
+- **Graceful deployment:** the same API works with Firebase/Cloud Run or the no-card Render path,
+  backed by Neon Postgres. Optional Firestore, FCM, Maps, Calendar, BigQuery and AI integrations
+  degrade without blocking the core ledger, forecasting or transfer workflow.
+
+## Assumptions
+
+- All facilities, inventory, donor records and outcomes in this repository are synthetic; no patient
+  data or real donor contact details are used.
+- Facility stock updates are sufficiently timely for the next hourly planning cycle; stale reporting
+  is surfaced to operators rather than silently treated as zero stock.
+- Shelf-life rules and compatibility rules are clinically governed configuration in the database.
+  The application does not auto-substitute blood groups.
+- Travel estimates are approximate when the Google Routes API is unavailable; the system falls back
+  to a documented haversine-based estimate and retains human approval.
+- The tool is decision support, not a medical device. Clinical staff remain responsible for patient
+  suitability, compatibility decisions and final transfer approval.
+
 ## What it does
 | | Feature | How |
 |---|---|---|
