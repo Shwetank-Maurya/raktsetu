@@ -24,7 +24,8 @@ USERS = [
 
 
 def main(password: str) -> None:
-    firebase_admin.initialize_app(options={"projectId": os.environ["FIREBASE_PROJECT_ID"]})
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(options={"projectId": get_settings().firebase_project_id or os.environ["FIREBASE_PROJECT_ID"]})
     cur = psycopg2.connect(get_settings().sync_database_url_direct.replace("postgresql+psycopg2://", "postgresql://")).cursor()
     cur.execute("SELECT code, id FROM facilities")
     fac = dict(cur.fetchall())

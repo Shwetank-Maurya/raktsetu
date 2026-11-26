@@ -1,252 +1,239 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import clsx from "clsx";
-import { Activity, BarChart3, Bot, Building2, ChevronRight, FlaskConical, Hospital, Pause, Play, ShieldCheck, Timer, Truck, Users } from "lucide-react";
-import { api } from "../api/client";
-import Art from "../components/Art";
-import { ArticleCard } from "./Articles";
-import { ARTICLES } from "../content/articles";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight, BarChart3, Bot, Building2, Check, Hospital, Map as MapIcon, ShieldCheck, Timer, Truck, Users,
+} from "lucide-react";
+import { SevBadge, SOFT } from "../components/ui";
+import { ARTICLES, fmtDate } from "../content/articles";
+import { describeNetwork, usePublicSummary, type PublicSummary } from "../lib/summary";
 
-const SLIDES = [
-  { title: "Predict blood shortages", accent: "before they become emergencies", body: "A probabilistic time-to-stockout for every hospital, blood group and component, judged against how fast help can arrive.",
-    cta: ["Explore the live demo", "/login"], cta2: ["How it works", "/articles/time-to-stockout-probabilities-not-averages"], art: "countdown" as const,
-    bg: "from-brand-sky via-[#1556c4] to-brand-blue", palette: ["#0b3fa8", "#3b8fe0"] as [string, string] },
-  { title: "Every unit counts.", accent: "Use it or move it", body: "Units tracked by expiry date, so blood that would expire on one shelf is moved to a patient who needs it on another.",
-    cta: ["Read the explainer", "/articles/use-it-or-move-it"], cta2: ["Try the demo", "/login"], art: "transfer" as const,
-    bg: "from-[#7a1a55] via-brand-plum to-[#b0306f]", palette: ["#9b1218", "#d8343a"] as [string, string] },
-  { title: "One city, one network.", accent: "Coordinated, then human-approved", body: "Google OR-Tools matches surplus to shortage under real clinical constraints. A coordinator reads the reasons and decides.",
-    cta: ["Inside the optimizer", "/articles/how-the-optimizer-decides"], cta2: ["Sign in", "/login"], art: "network" as const,
-    bg: "from-[#8f0c10] via-brand-crimson to-[#e3202a]", palette: ["#681861", "#a64d9b"] as [string, string] },
+const FEATURES = [
+  { icon: Timer, title: "Time-to-stockout", text: "Probability of running out in 24, 48 and 72 hours for every facility, group and component." },
+  { icon: Truck, title: "Coordinated transfers", text: "An optimizer matches surplus to shortage under clinical constraints. A person approves every move." },
+  { icon: BarChart3, title: "Expiry-aware stock", text: "Every unit tracked by expiry date, so blood about to expire on one shelf reaches a patient elsewhere." },
+  { icon: MapIcon, title: "Network map", text: "One live view of risk across hospitals and blood banks, with transfer routes and travel times." },
+  { icon: Bot, title: "Grounded assistant", text: "Ask in English or Hindi. Answers come only from live data and every number is checked." },
+  { icon: ShieldCheck, title: "Safe by design", text: "Role-based access, an audit trail for every decision, and clinician sign-off for substitutions." },
 ];
-
-const ROLES = [
-  { icon: Building2, title: "Blood banks", role: "bank", line: "Expiry warnings and donor appeals",
-    text: "See which units will expire unused, where they are needed, and draft targeted donor appeals in Hindi or English." },
-  { icon: Hospital, title: "Hospitals", role: "hospital", line: "Live availability within minutes",
-    text: "Know your own countdown, find compatible units nearby ranked by travel time and shelf life, and receive transfers." },
-  { icon: Users, title: "Regional coordinators", role: "coordinator", line: "One radar for the whole region",
-    text: "A risk map, an optimizer and an approval desk, plus a mass-casualty stress test for preparedness planning." },
-];
-
 const STEPS = [
-  { n: "01", t: "Record", d: "Every unit received, issued or discarded is appended to an idempotent ledger. Retries never double-count." },
-  { n: "02", t: "Forecast", d: "A global model forecasts demand with uncertainty: weekdays, festivals, dengue season and thalassemia schedules." },
-  { n: "03", t: "Simulate", d: "2,000 possible futures per series, consumed first-expiry-first-out, give the probability and time of a stockout." },
-  { n: "04", t: "Act", d: "The optimizer proposes transfers with reasons. A human approves, both inventories update, everyone sees it live." },
+  { t: "Record", d: "Stock changes go into an append-only ledger. Retries never double-count." },
+  { t: "Forecast", d: "Demand is forecast with uncertainty: weekdays, festivals, dengue season, scheduled transfusions." },
+  { t: "Simulate", d: "Thousands of possible futures per series give the probability and time of a stockout." },
+  { t: "Act", d: "Transfers are proposed with reasons. A coordinator approves and both sides update live." },
 ];
-
-const TILES = [
-  { label: "Time-to-stockout", icon: Timer, to: "/articles/time-to-stockout-probabilities-not-averages", p: ["#0b3fa8", "#3b8fe0"] },
-  { label: "Use it or move it", icon: Activity, to: "/articles/use-it-or-move-it", p: ["#9b1218", "#d8343a"] },
-  { label: "Transfer optimizer", icon: Truck, to: "/articles/how-the-optimizer-decides", p: ["#7a1a55", "#b0306f"] },
-  { label: "Mass-casualty stress test", icon: FlaskConical, to: "/articles/stress-testing-a-citys-blood-supply", p: ["#a41e6e", "#e3202a"] },
-  { label: "Grounded Gemini copilot", icon: Bot, to: "/articles/grounded-ai-copilot", p: ["#353535", "#6a6a6a"] },
-  { label: "Forecasts you can check", icon: BarChart3, to: "/articles/dengue-season-platelet-surge", p: ["#8a3b12", "#d17a3c"] },
+const ROLES = [
+  { icon: Hospital, title: "Hospitals", points: ["Your own countdown per blood group", "Compatible units nearby, ranked by travel time", "Receive transfers in one click"] },
+  { icon: Building2, title: "Blood banks", points: ["Units that will expire unused, and where they are needed", "Dispatch approved transfers", "Targeted donor appeals"] },
+  { icon: Users, title: "Coordinators", points: ["Risk across the whole region", "Approve optimizer proposals", "Mass-casualty stress tests"] },
 ];
+const TECH = ["Gemini", "Firebase", "Google Maps", "OR-Tools", "Cloud Run", "BigQuery", "Neon Postgres"];
+const SEV = ["critical", "high", "medium", "low"] as const;
 
-function useHashScroll() {
-  const { hash, pathname } = useLocation();
-  useEffect(() => {
-    if (!hash) { window.scrollTo(0, 0); return; }
-    const el = document.getElementById(hash.slice(1));
-    if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-  }, [hash, pathname]);
-}
-
-function Hero() {
-  const [i, setI] = useState(0);
-  const [paused, setPaused] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-  useEffect(() => {
-    if (paused) return;
-    const id = setInterval(() => setI((x) => (x + 1) % SLIDES.length), 7000);
-    return () => clearInterval(id);
-  }, [paused]);
-  const s = SLIDES[i];
+function Preview({ d }: { d?: PublicSummary }) {
+  const counts = d?.severity_counts ?? {};
+  const total = SEV.reduce((a, s) => a + (counts[s] ?? 0), 0);
+  const time = d?.last_cycle ? new Date(d.last_cycle).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : null;
   return (
-    <section aria-roledescription="carousel" aria-label="Highlights" className={clsx("relative overflow-hidden bg-linear-to-br text-white transition-colors duration-700", s.bg)}>
-      <div className="mx-auto grid min-h-[520px] max-w-[1440px] lg:grid-cols-2">
-        <div className="relative z-10 flex flex-col justify-center px-4 py-16 lg:px-8" aria-live="polite">
-          <h1 key={i} className="!text-white">
-            <span className="block text-5xl font-bold leading-[1.0] tracking-[-0.05em] lg:text-[4.1rem]">{s.title}</span>
-            <span className="mt-1 block font-serif text-4xl font-light leading-tight lg:text-[3.6rem]">{s.accent}</span>
-          </h1>
-          <p className="mt-6 max-w-xl text-lg text-white/90">{s.body}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to={s.cta[1]} className="inline-flex items-center gap-1 rounded-full bg-white px-7 py-3.5 font-bold text-brand-ink hover:bg-brand-pink">{s.cta[0]} <ChevronRight size={18} strokeWidth={3} /></Link>
-            <Link to={s.cta2[1]} className="inline-flex items-center gap-1 rounded-full border border-white px-7 py-3.5 font-bold hover:bg-white/10">{s.cta2[0]} <ChevronRight size={18} strokeWidth={3} /></Link>
+    <div className="rounded-2xl border border-line bg-white shadow-[0_24px_48px_-24px_rgba(24,24,27,0.18)]">
+      <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
+        <div className="flex gap-1.5">{["#e4e4e7", "#e4e4e7", "#e4e4e7"].map((c, i) => <span key={i} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}</div>
+        <span className="text-xs text-muted">Network risk{d?.network.region ? ` · ${d.network.region}` : ""}</span>
+        <span className="flex items-center gap-1 text-xs text-success"><span className="h-1.5 w-1.5 rounded-full bg-success" />Live</span>
+      </div>
+      <div className="p-5">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-xs text-muted">Series monitored</div>
+            <div className="stat-value text-3xl font-semibold tracking-tight text-ink">{d?.series_monitored ?? "—"}</div>
           </div>
-          <div className="mt-12 flex items-center gap-3">
-            {SLIDES.map((_, k) => (
-              <button key={k} onClick={() => setI(k)} aria-label={`Show slide ${k + 1}`} aria-current={k === i}
-                className={clsx("h-6 w-6 rounded-full transition", k === i ? "bg-white" : "bg-white/40 hover:bg-white/70")} />
-            ))}
-            <button onClick={() => setPaused((p) => !p)} aria-label={paused ? "Play slideshow" : "Pause slideshow"} className="ml-2 grid h-8 w-8 place-items-center rounded-full border border-white/60 hover:bg-white/10">
-              {paused ? <Play size={14} /> : <Pause size={14} />}
-            </button>
-          </div>
+          {time && <div className="text-xs text-faint">Updated {time} IST</div>}
         </div>
-        <div className="hero-angle relative hidden lg:block">
-          <Art key={i} kind={s.art} palette={s.palette} className="absolute inset-0" />
+        <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-subtle">
+          {total > 0 && SEV.map((s) => <div key={s} style={{ width: `${Math.max(((counts[s] ?? 0) / total) * 100, counts[s] ? 1.5 : 0)}%`, background: SOFT[s].dot }} />)}
+        </div>
+        <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2.5">
+          {SEV.map((s) => (
+            <li key={s} className="flex items-center justify-between text-sm"><SevBadge sev={s} /><span className="tnum text-ink">{counts[s] ?? 0}</span></li>
+          ))}
+        </ul>
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-line-soft pt-4">
+          <div className="rounded-lg bg-canvas p-3">
+            <div className="text-xs text-muted">Forecast error vs baseline</div>
+            <div className="mt-0.5 text-lg font-semibold text-ink">{d?.forecast?.wape_improvement_pct != null ? `−${d.forecast.wape_improvement_pct}%` : "—"}</div>
+          </div>
+          <div className="rounded-lg bg-canvas p-3">
+            <div className="text-xs text-muted">80% interval coverage</div>
+            <div className="mt-0.5 text-lg font-semibold text-ink">{d?.forecast?.coverage80 != null ? `${(d.forecast.coverage80 * 100).toFixed(1)}%` : "—"}</div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
 export default function Landing() {
-  useHashScroll();
-  const sum = useQuery({ queryKey: ["public-summary"], queryFn: () => api.get("/api/public/summary"), staleTime: 60_000 });
-  const d = sum.data;
-  const alerts = d?.replay ? Math.round(d.replay.alerts_a / Math.max(1, d.replay.alerts_b)) : null;
+  const { data: d } = usePublicSummary();
+  const network = describeNetwork(d);
+  const alertsX = d?.replay ? Math.round(d.replay.alerts_a / Math.max(1, d.replay.alerts_b)) : null;
+  const results = d?.replay ? [
+    { label: "Expired units", value: d.replay.wastage_reduction_pct, text: `−${Math.round(d.replay.wastage_reduction_pct)}%` },
+    { label: "Unmet demand", value: d.replay.unmet_reduction_pct, text: `−${Math.round(d.replay.unmet_reduction_pct)}%` },
+    { label: "Days with a stockout", value: d.replay.stockout_days_reduction_pct, text: `−${Math.round(d.replay.stockout_days_reduction_pct)}%` },
+  ] : [];
+
   return (
     <div>
-      <Hero />
-
-      {/* Live snapshot */}
-      <section className="mx-auto max-w-[1440px] px-4 py-10 lg:px-8" aria-label="Live network snapshot">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-          {[
-            ["Facilities connected", d?.facilities ?? "-"],
-            ["Series monitored", d?.series_monitored ?? "-"],
-            ["Critical right now", d?.severity_counts?.critical ?? 0],
-            ["High risk right now", d?.severity_counts?.high ?? 0],
-            ["Last network cycle", d?.last_cycle ? new Date(d.last_cycle).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) + " IST" : "-"],
-          ].map(([k, v], idx) => (
-            <div key={String(k)} className={clsx("rounded-br-[1.75rem] p-5", idx === 2 ? "bg-brand-pink" : "bg-brand-panel")}>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#6b6b6b]">{k}</div>
-              <div className={clsx("mt-1 text-3xl font-bold tracking-tight", idx === 2 ? "text-[#B34700]" : "text-brand-ink")}>{String(v)}</div>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_80%_20%,var(--color-accent-soft),transparent_70%)]" aria-hidden />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pb-20 pt-16 lg:grid-cols-[1.1fr_1fr] lg:pt-24">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs text-body">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" /> Live on {d?.facilities ?? "—"} facilities{d?.network.region ? ` in ${d.network.region}` : ""}
+            </span>
+            <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-[-0.03em] text-ink sm:text-5xl lg:text-[3.5rem]">
+              See blood shortages before they become emergencies.
+            </h1>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
+              RaktSetu forecasts demand, simulates time-to-stockout and coordinates transfers between hospitals and blood banks.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link to="/signup" className="inline-flex h-11 items-center gap-2 rounded-lg bg-ink px-5 text-sm font-medium text-white hover:bg-black">Create account <ArrowRight size={16} /></Link>
+              <Link to="/login" className="inline-flex h-11 items-center rounded-lg border border-line bg-white px-5 text-sm font-medium text-ink hover:bg-subtle">Sign in</Link>
+              <Link to="/login" className="text-sm text-muted hover:text-ink">or try a demo account →</Link>
             </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-[#6b6b6b]">Live from the synthetic demo network (31 facilities in Delhi NCT, refreshed every hour).</p>
-      </section>
-
-      {/* Roles (like the three location cards) */}
-      <section id="roles" className="mx-auto max-w-[1440px] scroll-mt-40 px-4 pb-16 lg:px-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          {ROLES.map((r) => (
-            <div key={r.title} className="flex flex-col items-center rounded-br-[2.5rem] bg-brand-panel px-8 py-10 text-center">
-              <span className="grid h-20 w-20 place-items-center rounded-full bg-linear-to-br from-brand-crimson to-brand-plum text-white shadow-md"><r.icon size={36} /></span>
-              <h2 className="mt-5 text-3xl font-bold tracking-[-0.04em] text-black">{r.title}</h2>
-              <p className="mt-3 text-[15px]">{r.text}</p>
-              <div className="my-5 h-px w-full bg-[#d9d4d4]" />
-              <p className="font-bold text-brand-plum">{r.line}</p>
-              <Link to={`/login?role=${r.role}`} className="mt-6 inline-flex items-center gap-1 rounded-full bg-brand-plum px-7 py-3 font-bold text-white hover:bg-brand-plum-dark">
-                Try as {r.title.toLowerCase().replace(/s$/, "")} <ChevronRight size={18} strokeWidth={3} />
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Split: network */}
-      <section id="network" className="scroll-mt-40">
-        <div className="mx-auto grid max-w-[1440px] items-center gap-10 lg:grid-cols-2">
-          <Art kind="network" palette={["#7a1a55", "#b0306f"]} className="h-[380px] rounded-tr-[3rem] lg:h-[460px]" />
-          <div className="px-4 py-6 lg:px-8">
-            <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-black">Our network</h2>
-            <p className="font-serif text-5xl font-light text-brand-ink">across Delhi NCT</p>
-            <p className="mt-6 text-lg">Eight large hospitals, thirteen smaller ones, two trauma centres, two maternity hospitals and six blood banks across four districts, all modelled at the level of the individual unit. One hospital runs out of O-negative while another discards expired units the same week. RaktSetu is the bridge between them.</p>
-            <ul className="mt-6 grid gap-2 text-[15px] sm:grid-cols-2">
-              {["8 blood groups x 4 components per facility", "Red cells, platelets, plasma and cryo", "Traffic-aware travel times and cold-chain limits", "Real-time updates for every browser"].map((x) => (
-                <li key={x} className="flex gap-2"><ChevronRight className="mt-0.5 shrink-0 text-brand-plum" size={18} strokeWidth={3} />{x}</li>
-              ))}
-            </ul>
-            <Link to="/login?role=coordinator" className="mt-8 inline-flex items-center gap-1 rounded-full bg-brand-crimson px-7 py-3 font-bold text-white hover:bg-[#8f0c10]">Open the risk map <ChevronRight size={18} strokeWidth={3} /></Link>
           </div>
+          <Preview d={d} />
+        </div>
+      </section>
+
+      {/* Built with */}
+      <section className="border-y border-line-soft">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-6 py-6">
+          <span className="text-xs text-faint">Built with</span>
+          {TECH.map((t) => <span key={t} className="text-sm font-medium text-muted">{t}</span>)}
+        </div>
+      </section>
+
+      {/* Live numbers */}
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-4">
+          {[
+            ["Facilities connected", d?.facilities],
+            ["Series monitored", d?.series_monitored],
+            ["Critical right now", d ? d.severity_counts.critical ?? 0 : undefined],
+            ["Fewer alerts than fixed thresholds", alertsX ? `${alertsX}×` : undefined],
+          ].map(([k, v]) => (
+            <div key={String(k)} className="bg-white p-6">
+              <div className="stat-value text-3xl font-semibold tracking-tight text-ink">{v ?? <span className="text-faint">—</span>}</div>
+              <div className="mt-1 text-sm text-muted">{k}</div>
+            </div>
+          ))}
+        </div>
+        {network && <p className="mt-3 text-xs text-faint">Synthetic demo network: {network}.</p>}
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <p className="text-sm font-medium text-accent">Capabilities</p>
+        <h2 className="mt-2 max-w-xl text-3xl font-semibold tracking-tight text-ink">Everything a blood network needs to act early</h2>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="rounded-xl border border-line bg-white p-6 transition-colors hover:border-ink/20">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent-soft text-accent"><f.icon size={18} /></span>
+              <h3 className="mt-4 text-base font-semibold text-ink">{f.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted">{f.text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how" className="mx-auto max-w-[1440px] scroll-mt-40 px-4 py-20 lg:px-8">
-        <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-brand-plum-dark">How it works</h2>
-        <p className="font-serif text-5xl font-light text-brand-plum-dark"><i>in</i> four steps</p>
-        <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s) => (
-            <li key={s.n} className="border-t-4 border-brand-plum pt-5">
-              <div className="font-serif text-5xl font-light text-brand-plum">{s.n}</div>
-              <h3 className="mt-2 text-2xl font-bold tracking-tight text-black">{s.t}</h3>
-              <p className="mt-2 text-[15px]">{s.d}</p>
-            </li>
-          ))}
-        </ol>
+      <section className="border-y border-line-soft bg-canvas">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <p className="text-sm font-medium text-accent">How it works</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">From a stock entry to an approved transfer</h2>
+          <ol className="mt-10 grid gap-6 md:grid-cols-4">
+            {STEPS.map((s, i) => (
+              <li key={s.t} className="relative">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-sm font-semibold text-white">{i + 1}</span>
+                  {i < STEPS.length - 1 && <span className="hidden h-px flex-1 bg-line md:block" />}
+                </div>
+                <h3 className="mt-4 text-base font-semibold text-ink">{s.t}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{s.d}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      {/* Capability tiles (like the service tiles) */}
-      <section id="capabilities" className="scroll-mt-40 bg-brand-pink py-20">
-        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
-          <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-brand-plum-dark">What RaktSetu does</h2>
-          <p className="font-serif text-5xl font-light text-brand-plum-dark"><i>for</i> every unit</p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {TILES.map((t) => (
-              <Link key={t.label} to={t.to} className="group relative flex h-52 items-end overflow-hidden rounded-tr-[3rem] p-7 text-white" style={{ background: `linear-gradient(135deg, ${t.p[0]}, ${t.p[1]})` }}>
-                <t.icon size={130} strokeWidth={1} className="absolute -right-4 -top-4 text-white/20 transition-transform duration-500 group-hover:scale-110" aria-hidden />
-                <span className="relative flex items-center gap-1 text-2xl font-bold tracking-tight">{t.label} <ChevronRight size={24} strokeWidth={3} className="transition-transform group-hover:translate-x-1" /></span>
-              </Link>
+      {/* Results */}
+      {results.length > 0 && (
+        <section className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-[1fr_1.2fr]">
+          <div>
+            <p className="text-sm font-medium text-accent">Measured, not claimed</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{d?.replay?.days}-day replay against fixed-threshold alerts</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">Same demand, same donations, same starting stock. Only the policy changes. Figures come from the synthetic network and are reproducible.</p>
+          </div>
+          <div className="space-y-5 rounded-xl border border-line bg-white p-6">
+            {results.map((r) => (
+              <div key={r.label}>
+                <div className="flex items-baseline justify-between"><span className="text-sm text-body">{r.label}</span><span className="text-xl font-semibold text-success">{r.text}</span></div>
+                <div className="mt-2 grid grid-cols-[72px_1fr] items-center gap-3 text-xs text-muted">
+                  <span>Fixed rule</span><div className="h-2 rounded-full bg-[#d4d4d8]" />
+                  <span>RaktSetu</span><div className="h-2 rounded-full bg-success" style={{ width: `${100 - r.value}%` }} />
+                </div>
+              </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Roles */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <p className="text-sm font-medium text-accent">Who it is for</p>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {ROLES.map((r) => (
+            <div key={r.title} className="rounded-xl border border-line bg-white p-6">
+              <r.icon size={20} className="text-ink" />
+              <h3 className="mt-4 text-base font-semibold text-ink">{r.title}</h3>
+              <ul className="mt-3 space-y-2">
+                {r.points.map((p) => <li key={p} className="flex gap-2 text-sm text-muted"><Check size={15} className="mt-0.5 shrink-0 text-success" />{p}</li>)}
+              </ul>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Proof */}
-      <section id="proof" className="mx-auto max-w-[1440px] scroll-mt-40 px-4 py-20 lg:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-6">
+      {/* Articles */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="flex items-end justify-between border-b border-line-soft pb-4">
+          <h2 className="text-base font-semibold text-ink">Articles</h2>
+          <Link to="/articles" className="text-sm text-muted hover:text-ink">View all</Link>
+        </div>
+        <ul className="divide-y divide-line-soft">
+          {ARTICLES.slice(0, 4).map((a) => (
+            <li key={a.slug}>
+              <Link to={`/articles/${a.slug}`} className="group flex flex-wrap items-baseline justify-between gap-2 py-5">
+                <span className="text-[15px] text-ink group-hover:text-accent">{a.title} {a.accent}</span>
+                <span className="text-xs text-faint">{fmtDate(a.date)} · {a.readMins} min</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* CTA */}
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <div className="flex flex-wrap items-center justify-between gap-6 rounded-2xl bg-ink px-8 py-10 text-white">
           <div>
-            <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-black">Measured,</h2>
-            <p className="font-serif text-5xl font-light text-brand-ink"><i>not</i> claimed</p>
+            <h2 className="text-2xl font-semibold tracking-tight !text-white">Work at a hospital or blood bank?</h2>
+            <p className="mt-1 text-sm text-white/70">Create an account and request access to your facility. Your coordinator approves it.</p>
           </div>
-          <p className="max-w-xl text-[15px]">A 90-day replay with identical demand for both policies: a static "alert at N units" rule versus RaktSetu. Synthetic data, reproducible by anyone, limits published alongside the wins.</p>
-        </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            [d?.replay ? `-${d.replay.wastage_reduction_pct}%` : "-", "expired units", "use it or move it in action"],
-            [d?.replay ? `-${d.replay.unmet_reduction_pct}%` : "-", "unmet demand", "fewer patients left waiting"],
-            [alerts ? `${alerts}x` : "-", "fewer alerts", "signal, not noise"],
-            [d?.forecast ? `${Math.round(d.forecast.coverage80 * 1000) / 10}%` : "-", "interval coverage", "80% bands that really cover 80%"],
-          ].map(([v, k, s]) => (
-            <div key={k} className="rounded-br-[2rem] border-l-4 border-brand-plum bg-brand-blush p-6">
-              <div className="text-5xl font-bold tracking-[-0.05em] text-brand-plum">{v}</div>
-              <div className="mt-1 text-lg font-bold text-brand-ink">{k}</div>
-              <div className="text-sm">{s}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* News & articles */}
-      <section className="bg-brand-pink py-20">
-        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-brand-plum-dark">News & articles</h2>
-              <p className="font-serif text-5xl font-light text-brand-plum-dark"><i>from</i> RaktSetu</p>
-            </div>
-            <Link to="/articles" className="inline-flex items-center gap-1 rounded-full bg-brand-crimson px-7 py-3 font-bold text-white hover:bg-[#8f0c10]">Read all articles <ChevronRight size={18} strokeWidth={3} /></Link>
+          <div className="flex gap-3">
+            <Link to="/signup" className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-5 text-sm font-medium text-ink hover:bg-subtle">Create account <ArrowRight size={16} /></Link>
+            <Link to="/login" className="inline-flex h-11 items-center rounded-lg border border-white/30 px-5 text-sm font-medium text-white hover:bg-white/10">Sign in</Link>
           </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {ARTICLES.slice(0, 3).map((a) => <ArticleCard key={a.slug} a={a} />)}
-          </div>
-        </div>
-      </section>
-
-      {/* Responsible AI */}
-      <section id="responsible" className="mx-auto max-w-[1440px] scroll-mt-40 px-4 py-20 lg:px-8">
-        <h2 className="text-5xl font-bold leading-none tracking-[-0.05em] text-black">Responsible by design</h2>
-        <p className="font-serif text-5xl font-light text-brand-ink">humans <i>decide</i></p>
-        <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            ["Decision support, not a device", "Every transfer needs a human approval. Substitutions need a clinician's sign-off, every time."],
-            ["Numbers from data, never from AI", "Gemini explains and converses. Every number it says is checked against the source data."],
-            ["Privacy first", "No patient records. Donors are consent-based, with hashed phone numbers and first names only."],
-            ["Honest about limits", "Synthetic data, published metrics and a 46-item edge-case table with tests and known gaps."],
-          ].map(([t, x]) => (
-            <div key={t} className="rounded-br-[2rem] bg-brand-panel p-6">
-              <ShieldCheck className="text-brand-plum" size={30} />
-              <h3 className="mt-3 text-xl font-bold tracking-tight text-black">{t}</h3>
-              <p className="mt-2 text-[15px]">{x}</p>
-            </div>
-          ))}
         </div>
       </section>
     </div>

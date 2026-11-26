@@ -1,3 +1,4 @@
+// Numbers that describe the live system are {{tokens}} filled from GET /api/public/summary (lib/summary.ts).
 // Editorial content for the public "News & articles" section. Plain data so it can move to a CMS
 // (or Firestore) later without touching components. Figures labelled "synthetic" come from the
 // reproducible demo network (docs/EVALUATION.md); clinical facts follow common transfusion practice
@@ -31,11 +32,11 @@ export const ARTICLES: Article[] = [
     body: [
       { p: "Most blood inventory systems raise a flag when stock falls below a fixed number. The trouble is that ten units of O-positive red cells can be three days of cover at a small hospital and a single busy evening at a trauma centre. A static threshold cannot tell those situations apart." },
       { h: "From a number to a distribution", p: "RaktSetu forecasts demand for every facility, blood group and component as a range rather than a single figure. Each forecast carries a 10th, 50th and 90th percentile and an expected value, learned by a global model that sees all facilities at once, so a new hospital with no history still gets a sensible estimate." },
-      { h: "Two thousand possible futures", p: "For each series we simulate 2,000 demand paths over the next seven days, hour by hour, and consume the actual units on the shelf in first-expiry-first-out order. Units that expire before they are used are counted as waste, not as cover. The result is a probability of running out within 24, 48 and 72 hours and a median time-to-stockout." },
+      { h: "Two thousand possible futures", p: "For each series we simulate {{risk_paths|2,000}} demand paths over the next seven days, hour by hour, and consume the actual units on the shelf in first-expiry-first-out order. Units that expire before they are used are counted as waste, not as cover. The result is a probability of running out within 24, 48 and 72 hours and a median time-to-stockout." },
       { h: "Judged against the lead time", p: "A hospital that will run out in 14 hours is fine if help can arrive in two, and already critical if the nearest usable stock is 15 hours away. Severity is therefore judged at the time a transfer could arrive, not at the time of the alert." },
       { list: ["Critical: likely to run out in 24 hours, or before resupply could arrive", "High: a real risk within 48 hours", "Medium: visible on the dashboard, but no alert, to avoid alarm fatigue"] },
       { quote: "The headline is not 'low stock'. It is '79% chance of running out of B+ platelets in the next 24 hours, with high confidence because the data is fresh.'" },
-      { h: "Honest calibration", p: "A forecast that claims 80% certainty should be right about 80% of the time. On held-out weeks of our synthetic network the 80% band covers 80.3% of outcomes after calibration. All of these figures come from synthetic data and are published, with their limits, on the Evaluation page." },
+      { h: "Honest calibration", p: "A forecast that claims 80% certainty should be right about 80% of the time. On held-out weeks of our synthetic network the 80% band covers {{coverage80_pct|about 80%}} of outcomes after calibration. All of these figures come from synthetic data and are published, with their limits, on the Evaluation page." },
     ],
   },
   {
@@ -52,9 +53,9 @@ export const ARTICLES: Article[] = [
       { p: "Blood cannot be manufactured and cannot be stockpiled for long. Red cells keep for roughly five to six weeks, platelets for about five days. When information lives in separate registers, a blood bank can watch units approach expiry while a hospital twenty kilometres away is phoning around for the same group." },
       { h: "Every unit, every expiry date", p: "RaktSetu tracks each unit individually, with its collection and expiry time, on an append-only ledger. Stock is always derived from that ledger, so a duplicate submission or a late entry cannot silently corrupt the count." },
       { h: "Spotting units that will die on the shelf", p: "The same simulation that predicts shortages also predicts waste: for every facility it estimates how many units will expire before local demand reaches them. Those 'doomed' units become supply for the network." },
-      { h: "Moving them where they will be used", p: "The optimizer rewards moving near-expiry units to a facility that will genuinely use them in time, but only if they arrive with enough life left: at least 72 hours for red cells and 60 hours for platelets in the default configuration, and only within the cold-chain travel limit." },
+      { h: "Moving them where they will be used", p: "The optimizer rewards moving near-expiry units to a facility that will genuinely use them in time, but only if they arrive with enough life left: at least {{rbc_arrival_h|72}} hours for red cells and {{plt_arrival_h|60}} hours for platelets in the current configuration, and only within the cold-chain travel limit." },
       { list: ["The donor site never drops below its own safety stock", "A facility that is itself at risk never donates", "Every move is a proposal until a coordinator approves it"] },
-      { p: "In a 90-day replay on the synthetic network, this approach reduced expired units by 40.9% compared with a static-threshold policy, while also reducing unmet demand. The replay is a simplified model and the figures are synthetic, but the direction is clear: visibility turns waste into supply." },
+      { p: "In a {{replay_days|90}}-day replay on the synthetic network, this approach reduced expired units by {{wastage_reduction_pct|about 40%}} compared with a static-threshold policy, while also reducing unmet demand. The replay is a simplified model and the figures are synthetic, but the direction is clear: visibility turns waste into supply." },
     ],
   },
   {

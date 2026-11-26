@@ -15,7 +15,7 @@ from app.domain.stock import freshness_hours, status_counts
 from app.security import Principal
 from app.services import availability
 from app.services.risk import latest_risk
-from app.services.scope import allowed_facilities
+from app.services.scope import allowed_facilities, network_center
 
 GROUPS = ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"]
 COMPS = ["RBC", "PLT", "FFP", "CRYO"]
@@ -91,11 +91,11 @@ async def find_available_units(session: AsyncSession, p: Principal, abo_rh: str,
     facs_scope = await _facilities(session, p)
     all_facs = {f.id: f for f in (await session.execute(select(Facility))).scalars()}
     origin = await _resolve(session, facs_scope, near_facility) or (all_facs.get(p.facility_id) if p.facility_id else None)
-    lat, lng = (origin.lat, origin.lng) if origin else (28.6139, 77.2090)
+    lat, lng = (origin.lat, origin.lng) if origin else await network_center(session)
     book = await load_rulebook(session)
     res = await availability.search(session, book, abo_rh, component, lat, lng, radius_km or 50,
                                     exclude_facility=origin.id if origin else None, limit=8)
-    return {"as_of": _as_of(), "near": origin.name if origin else "Delhi centre", "results": [
+    return {"as_of": _as_of(), "near": origin.name if origin else "network centre", "results": [
         {k: r[k] for k in ("facility_name", "abo_rh", "units", "eta_minutes", "distance_km", "earliest_expiry_h",
                            "needs_clinician_approval")} for r in res]}
 

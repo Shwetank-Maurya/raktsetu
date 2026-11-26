@@ -21,6 +21,8 @@ from app.config import get_settings
 log = logging.getLogger(__name__)
 
 ROLES = ("hospital_user", "bank_manager", "regional_coordinator", "admin")
+# A signed-up account that has not been granted a role yet: sees no data, can only request access.
+PENDING = "pending"
 
 
 @dataclass(frozen=True)
@@ -74,7 +76,7 @@ def verify_demo_token(token: str) -> Principal | None:
         body = json.loads(_unb64(payload))
         if body.pop("exp", 0) < time.time():
             return None
-        if body.get("role") not in ROLES:
+        if body.get("role") not in (*ROLES, PENDING):
             return None
         return Principal(**body)
     except Exception:  # noqa: BLE001 - any malformed token is simply invalid
@@ -114,9 +116,8 @@ def verify_firebase_token(token: str) -> Principal | None:
         return None
     role = claims.get("role")
     if role not in ROLES:
-        # Signed in but no role claim yet: least privilege, no facility scope.
-        return Principal(uid=claims["uid"], role="hospital_user", name=claims.get("name", ""),
-                         facility_id=-1, auth="firebase")
+        # Signed up but not yet approved: no data access, may only file an access request.
+        return Principal(uid=claims["uid"], role=PENDING, name=claims.get("name") or claims.get("email", ""), auth="firebase")
     return Principal(
         uid=claims["uid"], role=role, name=claims.get("name") or claims.get("email", ""),
         facility_id=claims.get("facility_id"), region_id=claims.get("region_id"), auth="firebase",

@@ -14,7 +14,7 @@ seed:      ## 12 months synthetic history + first full cycle (~40 s)
 replay:    ## 90-day closed-loop replay: static policy vs RaktSetu
 	cd backend && .venv/bin/python -m scripts.replay_sim
 api:
-	cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000
+	cd backend && .venv/bin/uvicorn app.main:app --reload --timeout-graceful-shutdown 5 --port 8000
 web:
 	cd frontend && npm run dev
 test:

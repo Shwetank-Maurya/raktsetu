@@ -93,6 +93,9 @@ async def db(engine):
         ])
         await seed_rules(s)
         await s.commit()
+    from app.api import meta
+
+    meta._SUMMARY_CACHE.update(at=0.0, data=None)  # each test sees its own fresh network
     yield sm
 
 

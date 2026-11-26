@@ -386,6 +386,28 @@ class EvalResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AccessRequest(Base):
+    """Self sign-up -> request a role at a facility -> coordinator/admin approves -> Firebase claims set."""
+    __tablename__ = "access_requests"
+    __table_args__ = (
+        CheckConstraint("requested_role IN ('hospital_user','bank_manager')", name="ck_access_role"),
+        CheckConstraint("status IN ('pending','approved','rejected')", name="ck_access_status"),
+        Index("ix_access_status", "status"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uid: Mapped[str] = mapped_column(String(128), unique=True)
+    email: Mapped[str | None] = mapped_column(String(200))
+    name: Mapped[str] = mapped_column(String(120))
+    requested_role: Mapped[str] = mapped_column(String(30))
+    facility_id: Mapped[int] = mapped_column(ForeignKey("facilities.id"))
+    note: Mapped[str | None] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(10), default="pending")
+    decided_by: Mapped[str | None] = mapped_column(String(128))
+    decision_note: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class AppConfig(Base):
     __tablename__ = "app_config"
     key: Mapped[str] = mapped_column(String(60), primary_key=True)

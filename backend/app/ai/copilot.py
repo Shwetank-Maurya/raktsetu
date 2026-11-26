@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai import tools
+from app.ai import groq_client, tools
 from app.ai.gemini_client import GeminiUnavailable, generate
 from app.ai.guards import numeric_check
 from app.security import Principal
@@ -80,11 +81,66 @@ async def chat(session: AsyncSession, p: Principal, message: str, language: str 
             ok, bad = numeric_check(answer, payloads)
         if ok and answer:
             return {"answer": answer, "tools_used": used, "tool_payloads": payloads, "grounded": True,
-                    "fallback": False, "as_of": _as_of(payloads)}
-        log.warning("copilot answer rejected after retry; using template")
+                    "fallback": False, "provider": "gemini", "as_of": _as_of(payloads)}
+        log.warning("copilot answer rejected after retry; trying next provider")
     except GeminiUnavailable as exc:
-        log.info("copilot fallback: %s", exc)
+        log.info("gemini unavailable for copilot: %s", exc)
+    if groq_client.enabled():
+        try:
+            out = await chat_groq(session, p, message, language, history)
+            if out:
+                return out
+        except groq_client.GroqUnavailable as exc:
+            log.info("groq unavailable for copilot: %s", exc)
     return await template_answer(session, p, message, language, payloads, used)
+
+
+async def chat_groq(session: AsyncSession, p: Principal, message: str, language: str, history: list[dict] | None) -> dict | None:
+    """Same grounded loop on Groq (OpenAI-style tool calling). Returns None if ungrounded."""
+    msgs: list[dict] = [{"role": "system", "content": SYSTEM.format(language=_lang(language))}]
+    for h in (history or [])[-8:]:
+        text = str(h.get("text", ""))[:1000]
+        if text:
+            msgs.append({"role": "assistant" if h.get("role") in ("model", "assistant") else "user", "content": text})
+    msgs.append({"role": "user", "content": message})
+    fns = [{"type": "function", "function": d} for d in tools.DECLARATIONS]
+    payloads: list[dict] = []
+    used: list[str] = []
+    answer = ""
+    for _ in range(MAX_TOOL_ROUNDS + 1):
+        m = await groq_client.chat(msgs, tools=fns)
+        calls = m.get("tool_calls") or []
+        if not calls:
+            answer = (m.get("content") or "").strip()
+            break
+        msgs.append({"role": "assistant", "content": m.get("content") or "", "tool_calls": calls})
+        for c in calls:
+            fn = c.get("function", {})
+            try:
+                args = json.loads(fn.get("arguments") or "{}")
+            except json.JSONDecodeError:
+                args = {}
+            result = await tools.call_tool(session, p, fn.get("name", ""), args)
+            payloads.append(result)
+            used.append(fn.get("name", ""))
+            msgs.append({"role": "tool", "tool_call_id": c.get("id"), "content": json.dumps(result, default=str)[:12000]})
+    if not payloads:
+        payloads.append(await tools.get_risk_summary(session, p))
+        used.append("get_risk_summary")
+        msgs.append({"role": "user", "content": "Tool data: " + json.dumps(payloads[-1], default=str)[:8000]
+                     + "\nAnswer the original question using only numbers from this data."})
+        answer = ((await groq_client.chat(msgs)).get("content") or "").strip()
+    ok, bad = numeric_check(answer, payloads)
+    if not ok:
+        msgs += [{"role": "assistant", "content": answer},
+                 {"role": "user", "content": f"These numbers are not in the tool results: {bad}. Rewrite using only numbers copied from the tool results."}]
+        answer = ((await groq_client.chat(msgs)).get("content") or "").strip()
+        ok, bad = numeric_check(answer, payloads)
+    if ok and answer:
+        return {"answer": answer, "tools_used": used, "tool_payloads": payloads, "grounded": True,
+                "fallback": False, "provider": "groq", "as_of": _as_of(payloads)}
+    log.warning("groq answer failed numeric check: %s", bad)
+    return None
 
 
 def _as_of(payloads: list[dict]) -> str | None:
@@ -130,4 +186,4 @@ async def template_answer(session: AsyncSession, p: Principal, message: str, lan
     as_of = data.get("as_of")
     tail = f"(डेटा {as_of} तक)" if hi else f"(data as of {as_of})"
     return {"answer": "\n".join([head, *lines, tail]), "tools_used": used, "tool_payloads": payloads,
-            "grounded": True, "fallback": True, "as_of": as_of}
+            "grounded": True, "fallback": True, "provider": "template", "as_of": as_of}

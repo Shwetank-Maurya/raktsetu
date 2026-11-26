@@ -25,15 +25,15 @@ export default function Inventory() {
   });
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div><h1>{t("inventory")}<span className="accent">every unit <i>on</i> the ledger</span></h1>
-        <p className="text-sm text-[#6b6b6b]">Every change appends to the ledger with an Idempotency-Key, so a double-click or network retry never double-counts. Issues use FEFO automatically. Open the Availability matrix in another browser to watch it update.</p></div>
+      <div><h1>{t("inventory")}</h1>
+        <p className="text-sm text-muted">Every change appends to the ledger with an Idempotency-Key, so a double-click or network retry never double-counts. Issues use FEFO automatically. Open the Availability matrix in another browser to watch it update.</p></div>
       <Card>
         <div className="grid gap-3 sm:grid-cols-3">
           <Select label="Facility" value={fid} onChange={setFid} options={inScope.map((f: any) => [String(f.id), `${f.code} ${f.name}`] as [string, string])} />
           <Select label="Event" value={type} onChange={setType} options={[["receive", "Receive (new units)"], ["issue", "Issue to patient (FEFO)"], ["discard", "Discard"]]} />
           <Select label="Blood group" value={g} onChange={setG} options={[...GROUPS]} />
           <Select label="Component" value={c} onChange={setC} options={COMPONENTS.map((x) => [x, COMP_LABEL[x]] as [string, string])} />
-          <label className="flex flex-col gap-1 text-xs text-brand-body">Quantity<input type="number" min={1} max={200} value={qty} onChange={(e) => setQty(Number(e.target.value))} className="rounded-full border border-[#cfc6c6] px-2 py-1.5 text-sm" /></label>
+          <label className="flex flex-col gap-1 text-xs text-body">Quantity<input type="number" min={1} max={200} value={qty} onChange={(e) => setQty(Number(e.target.value))} className="h-9 rounded-lg border border-line px-2.5 text-sm" /></label>
           {type === "issue" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={emergency} onChange={(e) => setEmergency(e.target.checked)} /> Emergency issue</label>}
         </div>
         <div className="mt-3"><Button onClick={() => m.mutate()} disabled={m.isPending}>Record</Button></div>

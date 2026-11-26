@@ -1,41 +1,43 @@
 @import "tailwindcss";
 
-/* RaktSetu visual system: warm clinical palette (plum / crimson / blush), bold tight humanist sans
-   headings with a light serif accent line, pill buttons, panels with one large rounded corner.
-   Severity colours stay on the colour-blind-safe Okabe-Ito scale (src/lib/format.ts). */
+/* RaktSetu design system: neutral zinc surfaces, one accent (blood red), Inter with tabular
+   figures, 1px borders instead of shadows, generous whitespace. Severity uses the colour-blind-safe
+   Okabe-Ito hues (src/lib/format.ts) and is always paired with a text label. */
 @theme {
-  --color-brand-plum: #881e5d;
-  --color-brand-plum-dark: #681861;
-  --color-brand-crimson: #b30f14;
-  --color-brand-magenta: #a41e6e;
-  --color-brand-pink: #f7e9e9;
-  --color-brand-blush: #f8f5f5;
-  --color-brand-panel: #f2f2f2;
-  --color-brand-ink: #353535;
-  --color-brand-body: #4f4f4f;
-  --color-brand-blue: #0b3fa8;
-  --color-brand-sky: #3b8fe0;
-  --font-sans: "Source Sans 3", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Newsreader", "Noto Serif Devanagari", ui-serif, Georgia, serif;
+  --color-ink: #18181b;
+  --color-body: #3f3f46;
+  --color-muted: #71717a;
+  --color-faint: #a1a1aa;
+  --color-line: #e4e4e7;
+  --color-line-soft: #f0f0f2;
+  --color-canvas: #fafafa;
+  --color-subtle: #f4f4f5;
+  --color-accent: #c0192f;
+  --color-accent-strong: #9b1424;
+  --color-accent-soft: #fdf2f3;
+  --color-accent-line: #f6c9cf;
+  --color-success: #0f7b52;
+  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
-html { font-family: var(--font-sans); color: var(--color-brand-body); }
-html[lang="hi"] body { font-family: "Noto Sans Devanagari", var(--font-sans); }
-body { background: #fff; }
-
-/* Page titles: bold, tight, dark - with an optional serif accent line (<span class="accent">) */
-main h1 { color: var(--color-brand-ink); font-weight: 700; letter-spacing: -0.045em; line-height: 1.02; font-size: 2.25rem; }
-@media (min-width: 1024px) { main h1 { font-size: 2.75rem; } }
-main h1 .accent, .serif-accent { display: block; font-family: var(--font-serif); font-weight: 300; letter-spacing: -0.01em; color: var(--color-brand-ink); }
-main h1 + p { margin-top: 0.5rem; }
-
-:focus-visible { outline: 3px solid var(--color-brand-plum); outline-offset: 2px; }
-table { border-collapse: collapse; }
-table th { font-weight: 600; color: #6b6b6b; }
+  html { font-family: var(--font-sans); color: var(--color-body); -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
+  html[lang="hi"] body { font-family: "Noto Sans Devanagari", var(--font-sans); }
+  body { background: var(--color-canvas); }
+  h1, h2, h3 { color: var(--color-ink); letter-spacing: -0.02em; }
+  main h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; }
+  main h1 + p { margin-top: 0.25rem; color: var(--color-muted); font-size: 0.875rem; }
+  .tnum, td, .stat-value { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
+  table { border-collapse: collapse; }
+  th { font-weight: 500; color: var(--color-muted); font-size: 0.75rem; text-align: left; }
+  ::selection { background: var(--color-accent-soft); color: var(--color-accent-strong); }
 }
 
-/* Hero angled panel (diagonal edge like a cut photo frame) */
-.hero-angle { clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%, 0 32%); }
+.grid-bg {
+  background-image: linear-gradient(var(--color-line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--color-line-soft) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

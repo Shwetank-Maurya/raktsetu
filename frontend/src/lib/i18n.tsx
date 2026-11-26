@@ -6,9 +6,9 @@ const dict = {
     transfers: "Transfer Desk", alerts: "Alerts", stress: "Stress Test", copilot: "Copilot", eval: "Evaluation",
     quality: "Data Quality", register: "Snap Register", donors: "Donor Appeals", inventory: "Record Stock",
     critical: "Critical", high: "High", medium: "Medium", low: "Low", logout: "Sign out", approve: "Approve",
-    reject: "Reject", dispatch: "Dispatch", receive: "Receive", cancel: "Cancel", why: "Why this plan?",
+    reject: "Reject", dispatch: "Dispatch", receive: "Receive", cancel: "Cancel", why: "Why?",
     synthetic: "Synthetic demo data", decision: "Decision support only - humans approve every transfer",
-    tts: "Time to stockout", p24: "Stockout in 24 h", units: "units", asof: "as of", articles: "Articles",
+    tts: "Time to stockout", p24: "Stockout in 24 h", units: "units", asof: "as of", articles: "Articles", access: "Access requests",
   },
   hi: {
     command: "कमांड सेंटर", map: "जोखिम मानचित्र", matrix: "उपलब्धता", expiry: "एक्सपायरी बोर्ड", forecast: "पूर्वानुमान",
@@ -17,7 +17,7 @@ const dict = {
     critical: "गंभीर", high: "उच्च", medium: "मध्यम", low: "कम", logout: "साइन आउट", approve: "स्वीकृत करें",
     reject: "अस्वीकार", dispatch: "रवाना करें", receive: "प्राप्त करें", cancel: "रद्द करें", why: "यह योजना क्यों?",
     synthetic: "सिंथेटिक डेमो डेटा", decision: "केवल निर्णय सहायता - हर ट्रांसफर मानव स्वीकृत करता है",
-    tts: "स्टॉक खत्म होने का समय", p24: "24 घंटे में कमी", units: "यूनिट", asof: "तक", articles: "लेख",
+    tts: "स्टॉक खत्म होने का समय", p24: "24 घंटे में कमी", units: "यूनिट", asof: "तक", articles: "लेख", access: "पहुँच अनुरोध",
   },
 };
 export type Lang = keyof typeof dict;

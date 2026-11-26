@@ -13,6 +13,7 @@ from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai import groq_client
 from app.ai.gemini_client import GeminiUnavailable, generate
 from app.ai.guards import numeric_check
 from app.db.models import BloodUnit, Donor, Facility, TransferRequest
@@ -72,11 +73,25 @@ async def explain_transfer(session: AsyncSession, t: TransferRequest, lang: str 
         out = json.loads(resp.text)
         ok, bad = numeric_check(out["summary"] + " " + " ".join(out["bullets"]), [facts])
         if ok:
-            return out | {"fallback": False}
+            return out | {"fallback": False, "provider": "gemini"}
         log.warning("explain numeric check failed: %s", bad)
     except (GeminiUnavailable, ValueError, KeyError) as exc:
-        log.info("explain fallback: %s", exc)
-    return _template_explain(t, src, dst, lang)
+        log.info("gemini explain unavailable: %s", exc)
+    if groq_client.enabled():
+        try:
+            m = await groq_client.chat([
+                {"role": "system", "content": "You explain blood transfer recommendations. Reply with JSON {\"summary\": str, \"bullets\": [str]}. "
+                                              "Use ONLY numbers present in the facts JSON. At most 5 bullets."},
+                {"role": "user", "content": f"Language: {'Hindi (Devanagari)' if lang == 'hi' else 'English'}. Facts JSON:\n" + json.dumps(facts, default=str)},
+            ], json_mode=True)
+            out = json.loads(m.get("content") or "{}")
+            if out.get("summary") and isinstance(out.get("bullets"), list):
+                ok, bad = numeric_check(out["summary"] + " " + " ".join(map(str, out["bullets"])), [facts])
+                if ok:
+                    return {"summary": out["summary"], "bullets": [str(b) for b in out["bullets"]][:5], "fallback": False, "provider": "groq"}
+        except (groq_client.GroqUnavailable, ValueError) as exc:
+            log.info("groq explain unavailable: %s", exc)
+    return _template_explain(t, src, dst, lang) | {"provider": "template"}
 
 
 # ----------------------------------------------------------------------------- donor campaigns
@@ -125,7 +140,19 @@ async def draft_campaign(session: AsyncSession, facility_id: int, abo_rh: str, c
         if "{first_name}" in text and "STOP" in text and len(text) <= 400:
             template, fallback = text.replace("{facility}", f.name).replace("{abo_rh}", abo_rh), False
     except GeminiUnavailable as exc:
-        log.info("campaign fallback: %s", exc)
+        log.info("gemini campaign unavailable: %s", exc)
+        if groq_client.enabled():
+            try:
+                m = await groq_client.chat([{"role": "user", "content":
+                    f"Write one SMS (max 320 characters) in {'Hindi (Devanagari)' if language == 'hi' else 'English'} inviting voluntary "
+                    f"blood donors with group {abo_rh} to donate at {f.name}. Use the placeholder {{first_name}} exactly once. "
+                    "No medical claims, no guilt, no numbers. End with an opt-out line telling them to reply STOP. Reply with the SMS only."}],
+                    temperature=0.6)
+                text = (m.get("content") or "").strip()
+                if "{first_name}" in text and "STOP" in text and len(text) <= 400:
+                    template, fallback = text, False
+            except groq_client.GroqUnavailable as exc2:
+                log.info("groq campaign unavailable: %s", exc2)
     fill = lambda d: template.replace("{first_name}", d.first_name).replace("{facility}", f.name).replace("{abo_rh}", abo_rh)  # noqa: E731
     return {
         "facility": f.name, "abo_rh": abo_rh, "component": component, "language": language,

@@ -21,7 +21,7 @@ type Props = {
 
 const KEY = import.meta.env.VITE_MAPS_BROWSER_KEY as string | undefined;
 const MAP_ID = (import.meta.env.VITE_MAPS_MAP_ID as string | undefined) || "DEMO_MAP_ID";
-const CENTER: [number, number] = [28.62, 77.21];
+const CENTER: [number, number] = [20.59, 78.96]; // India; pages pass the network centre from the DB
 
 export const mapsProvider = KEY ? "Google Maps Platform" : "OpenStreetMap (fallback - set VITE_MAPS_BROWSER_KEY)";
 

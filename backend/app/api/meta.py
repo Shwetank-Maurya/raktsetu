@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai import gemini_client
+from app.ai import gemini_client, groq_client
 from app.config import get_settings
 from app.db.models import Facility, Region
 from app.db.session import get_session
@@ -39,6 +39,7 @@ async def meta() -> dict:
         "env": s.env,
         "integrations": {
             "gemini": gemini_client.status(),
+            "groq": groq_client.status(),
             "firebase_auth": bool(s.firebase_project_id) and s.auth_mode in ("firebase", "both"),
             "demo_auth": s.auth_mode in ("demo", "both"),
             "firestore_live_feed": s.firestore_enabled,
@@ -53,10 +54,25 @@ async def meta() -> dict:
     }
 
 
+_SUMMARY_CACHE: dict = {"at": 0.0, "data": None}
+SUMMARY_TTL_S = 60
+
+
 @router.get("/api/public/summary", tags=["meta"])
 async def public_summary(session: AsyncSession = Depends(get_session)) -> dict:
     """Unauthenticated landing-page snapshot: network-level aggregates only (no facility, unit or
-    donor data), all derived from the synthetic demo network."""
+    donor data), all derived from the synthetic demo network. Cached 60 s: it is the same for
+    every visitor and costs ~12 round trips to a remote (Neon) database."""
+    import time
+
+    if _SUMMARY_CACHE["data"] is not None and time.monotonic() - _SUMMARY_CACHE["at"] < SUMMARY_TTL_S:
+        return _SUMMARY_CACHE["data"]
+    data = await _build_summary(session)
+    _SUMMARY_CACHE.update(at=time.monotonic(), data=data)
+    return data
+
+
+async def _build_summary(session: AsyncSession) -> dict:
     from sqlalchemy import func
 
     from app.db.models import EvalResult, JobRun, RiskSnapshot
@@ -82,7 +98,44 @@ async def public_summary(session: AsyncSession = Depends(get_session)) -> dict:
                                                                 "alerts_a": r.payload["policy_a"]["alerts"], "alerts_b": r.payload["policy_b"]["alerts"]}
     last = (await session.execute(select(JobRun.finished_at).where(JobRun.status == "ok").order_by(JobRun.started_at.desc()).limit(1))).scalar()
     out["last_cycle"] = last
+    out |= await _network_facts(session)
     return out
+
+
+async def _network_facts(session: AsyncSession) -> dict:
+    """Facts the public site and login page render instead of hard-coding them."""
+    from sqlalchemy import func
+
+    from app.db.models import ShelfLifeRule
+    from app.domain.rules import ABO_RH
+
+    comp = (await session.execute(select(Facility.subtype, func.count()).where(Facility.active.is_(True))
+                                  .group_by(Facility.subtype))).all()
+    regions = (await session.execute(select(Region).order_by(Region.id))).scalars().all()
+    state = next((r for r in regions if r.level == "state"), None)
+    rules = (await session.execute(select(ShelfLifeRule))).scalars().all()
+    codes = [spec["facility_code"] for spec in DEMO_USERS.values() if spec.get("facility_code")]
+    names = dict((await session.execute(select(Facility.code, Facility.name).where(Facility.code.in_(codes)))).all()) if codes else {}
+    roles = {}
+    for key, spec in DEMO_USERS.items():
+        scope = names.get(spec.get("facility_code"), spec.get("facility_code")) if spec.get("facility_code") else (state.name if state else "network")
+        roles[key] = {"role": spec["role"], "title": spec["name"], "scope": scope,
+                      "scope_kind": "facility" if spec.get("facility_code") else "region"}
+    return {
+        "network": {
+            "by_subtype": {s: n for s, n in comp},
+            "region": state.name if state else None,
+            "districts": [r.name for r in regions if r.level == "district"],
+            "center": [state.lat, state.lng] if state and state.lat is not None else None,
+            "blood_groups": len(ABO_RH),
+            "components": len(rules) or 4,
+        },
+        "rules": {r.component: {"shelf_life_h": r.shelf_life_hours, "min_usable_h": r.min_usable_hours,
+                                "min_life_on_arrival_h": r.min_life_on_arrival_hours, "max_transit_h": r.max_transit_hours,
+                                "storage": r.storage} for r in rules},
+        "engine": {"risk_paths": get_settings().risk_paths, "horizon_h": get_settings().risk_horizon_hours},
+        "demo_roles": roles,
+    }
 
 
 class DemoLogin(BaseModel):

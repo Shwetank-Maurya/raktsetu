@@ -41,6 +41,15 @@ async def assert_facility(session: AsyncSession, p: Principal, facility_id: int)
         raise Forbidden("facility outside your scope")
 
 
+async def network_center(session: AsyncSession) -> tuple[float, float]:
+    """Centroid of the top-level region (from the regions table), used when no facility is given."""
+    r = (await session.execute(select(Region).where(Region.level == "state").order_by(Region.id).limit(1))).scalar_one_or_none()
+    if r and r.lat is not None and r.lng is not None:
+        return r.lat, r.lng
+    f = (await session.execute(select(Facility.lat, Facility.lng).limit(1))).first()
+    return (f[0], f[1]) if f else (0.0, 0.0)
+
+
 def require_role(p: Principal, *roles: str) -> None:
     if p.role not in roles and p.role != "admin":
         raise Forbidden(f"requires role: {', '.join(roles)}")

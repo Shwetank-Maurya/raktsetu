@@ -5,7 +5,7 @@
 > Antigravity, Cursor, Copilot, etc.) can continue the work without the original conversation.
 > Keep it updated when you change architecture, invariants or deployment.
 
-Last updated: 2026-11-26 · Status: **all P0 and P1 features built and tested locally; P2 partially built; not yet deployed** (see section 16).
+Last updated: 2026-11-26 (minimalist UI, real Firebase auth, Groq fallback) · Status: **all P0 and P1 features built and tested locally; P2 partially built; not yet deployed** (see section 16).
 
 ---
 
@@ -263,7 +263,12 @@ expected wastage >= 3. Data-silent, regional-deficit (no feasible donor). Dedupe
 `kind:facility:group:component`; re-fire only on escalation or after 6 h cooldown; critical unacknowledged
 for 30 min escalates; auto-resolve after 2 calm cycles.
 
-### 7.5 Gemini (`ai/`)
+### 7.5 Gemini + Groq (`ai/`)
+Provider chain: Gemini primary model -> `GEMINI_MODEL_FALLBACKS` (on 503/429) -> **Groq**
+(`ai/groq_client.py`, OpenAI-compatible tool calling, `GROQ_API_KEY`, `GROQ_MODEL`) -> deterministic template.
+Groq runs the same read-only tool loop and the same numeric post-check; responses carry `provider`.
+Register OCR is Gemini-only (vision).
+
 Gemini **never computes numbers**. Copilot loop: function calling over 5 read-only, role-scoped tools ->
 answer -> `numeric_check` (every number must match tool JSON within rounding; Devanagari digits handled) ->
 one corrective retry -> template answer from tool data. Untrusted text (facility notes, OCR) is fenced in
@@ -293,7 +298,8 @@ All writes require `Idempotency-Key` (8-100 chars) and write `audit_log`.
 | Service | Code | Config | Without it |
 |---|---|---|---|
 | Gemini (AI Studio or Vertex) | `ai/gemini_client.py`, `ai/copilot.py`, `ai/features.py` | `GEMINI_API_KEY` or `GOOGLE_GENAI_USE_VERTEXAI=true` + ADC, `GEMINI_MODEL` | template answers/explanations/messages; OCR returns 503 "enter manually" |
-| Firebase Auth | `security.py::verify_firebase_token`, `frontend/src/lib/auth.tsx` | `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*`, claims via `scripts/set_claims.py` | demo HMAC tokens (AUTH_MODE=both) |
+| Firebase Auth | `security.py::verify_firebase_token`, `frontend/src/lib/auth.tsx` (email/password primary; demo accounts are real Firebase users) | `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*`, `VITE_DEMO_PASSWORD`; provision with `scripts/firebase_setup.py --write-frontend-env` (web app, email auth, users + claims, Firestore rules) | demo HMAC tokens when Firebase is not configured |
+| Groq (fallback LLM) | `ai/groq_client.py`, `ai/copilot.py::chat_groq`, `ai/features.py` | `GROQ_API_KEY`, `GROQ_MODEL` | template answers |
 | Firestore | `services/realtime.py`, `frontend/src/lib/live.ts`, `infra/firestore.rules` | `FIRESTORE_ENABLED=true` (+ADC) | TanStack Query polling (20 s) |
 | FCM | `realtime.push_alert`, `/api/push/subscribe`, `public/firebase-messaging-sw.js` | `FCM_ENABLED=true`, `VITE_FIREBASE_VAPID_KEY` | in-app alerts only |
 | Remote Config + Analytics | `frontend/src/lib/firebase.ts` (feature flags gate stress/OCR/donors/copilot routes) | `VITE_FIREBASE_MEASUREMENT_ID` | default flags all on; no analytics |
@@ -329,24 +335,20 @@ Donors (appeal drafts), Register (photo -> review table -> commit), Evaluation (
 history), DataQuality (freshness, rejects, audit). Hindi/English toggle; Okabe-Ito colour-blind palette
 with text + shape on every badge; skip link; keyboard-closable drawer; mobile nav.
 
-**Visual system** (inspired by the look of a large public-hospital website, own brand and assets only):
-tokens in `src/index.css` `@theme` - plum `#881E5D` / deep plum `#681861`, crimson `#B30F14`, blush
-`#F8F5F5` and pink `#F7E9E9` section backgrounds, ink `#353535`, body `#4F4F4F`, blue gradient hero.
-Type: Source Sans 3 (bold, tight tracking) + Newsreader light serif accent line (`<span class="accent">`
-inside page `<h1>`, `SectionTitle` component). Layout (`components/Layout.tsx`): dismissible plum
-announcement bar, sticky white two-row header (utility links + pill CTAs Copilot/Stress test; main nav),
-magenta-to-red CTA band and blush footer. Components (`components/ui.tsx`): pill buttons with chevrons,
-panels with one large rounded corner (`rounded-br-[2rem]`), gradient tiles with `rounded-tr`. Severity
-colours remain Okabe-Ito (data), separate from brand colours (chrome).
+**Visual system (minimalist)**: tokens in `src/index.css` `@theme` - zinc neutrals (`ink`, `body`, `muted`,
+`faint`, `line`, `canvas`, `subtle`) and one accent, blood red `accent #c0192f`. Inter with tabular figures,
+1px borders instead of shadows, no decorative gradients or serif display type. App shell
+(`components/Layout.tsx`): fixed grouped sidebar (Monitor, Inventory, Plan, Assist, Insights) with the
+signed-in user at the bottom, thin top bar (live status, alerts, language, copilot). Kit
+(`components/ui.tsx`): `PageHeader`, `Card`, `Stat`, `SevBadge` (soft Okabe-Ito chips + text), `Bar`,
+`Tabs`, `Select`, `Drawer`, `Skeleton`, `EmptyState`. Dashboard = critical banner, 4 stats, at-risk table,
+risk distribution, latest alerts.
 
-**Public site (signed out)** - `App.tsx` renders `components/PublicLayout.tsx` with: `pages/Landing.tsx`
-(rotating hero carousel with pause control, live snapshot from the unauthenticated aggregate-only
-`GET /api/public/summary`, role cards, network split section, how-it-works steps, capability tiles,
-measured results, latest articles, responsible-AI principles), `pages/Articles.tsx` (category filter,
-featured article) and `pages/ArticlePage.tsx` (`/articles/:slug`), and `pages/Login.tsx` (`/login?role=`
-pre-selects a demo role). Any other path redirects to `/login`. Article content lives in
-`src/content/articles.ts` (8 articles; plain data, CMS-ready). Photos are replaced by original SVG
-illustrations in `components/Art.tsx`. Signed-in users can also read articles inside the app.
+**Public site (signed out)**: `components/PublicLayout.tsx` (one header, one-line footer) with
+`pages/Landing.tsx` (hero, live numbers from `GET /api/public/summary`, three features, latest articles),
+`pages/Articles.tsx`, `pages/ArticlePage.tsx` and `pages/Login.tsx`. Any other path redirects to `/login`.
+Article text lives in `src/content/articles.ts`; numbers about the live system are `{{tokens}}` filled
+from the public summary (`lib/summary.ts`), so nothing about the network is hard-coded in the UI.
 
 ## 12. Testing (`backend/tests`, 127 tests, ~4 s)
 - `test_risk_sim.py`: vectorised FEFO == brute-force oracle (Hypothesis); more stock never raises risk;

@@ -15,7 +15,7 @@ from app.security import Principal
 from app.services import availability
 from app.services.forecasting import today_ist
 from app.services.risk import latest_risk
-from app.services.scope import allowed_facilities, assert_facility
+from app.services.scope import allowed_facilities, assert_facility, network_center
 
 router = APIRouter(prefix="/api", tags=["risk"])
 
@@ -167,7 +167,7 @@ async def search(abo_rh: str, component: str, facility_id: int | None = None, la
             raise HTTPException(404, "facility not found")
         lat, lng = f.lat, f.lng
     if lat is None or lng is None:
-        lat, lng = 28.6139, 77.2090
+        lat, lng = await network_center(session)
     book = await load_rulebook(session)
     res = await availability.search(session, book, abo_rh, component, lat, lng, radius_km, include_compatible,
                                     exclude_facility=origin_id, irradiated=irradiated, cmv_safe=cmv_safe)

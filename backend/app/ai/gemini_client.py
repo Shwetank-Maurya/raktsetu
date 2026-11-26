@@ -52,19 +52,55 @@ def _check_breaker() -> None:
     _calls.append(now)
 
 
+_last_model: str | None = None
+
+
+def _transient(exc: Exception) -> bool:
+    """Capacity / rate errors worth retrying on another model (503 overloaded, 429 quota, timeouts)."""
+    msg = str(exc)
+    return any(t in msg for t in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "overloaded", "high demand", "DEADLINE"))
+
+
+def model_chain(model: str | None = None) -> list[str]:
+    s = get_settings()
+    chain = [model or s.gemini_model] + [m.strip() for m in s.gemini_model_fallbacks.split(",") if m.strip()]
+    return list(dict.fromkeys(chain))
+
+
 async def generate(contents, config, model: str | None = None):
+    """Try the configured model, then fallbacks on transient capacity errors (503/429), with one
+    short backoff. Only a full-chain failure counts toward the circuit breaker."""
+    import asyncio
+
+    global _last_model
     _check_breaker()
     client = get_client()
-    try:
-        return await client.aio.models.generate_content(
-            model=model or get_settings().gemini_model, contents=contents, config=config)
-    except Exception as exc:
-        _failures.append(time.time())
-        log.warning("gemini call failed: %s", exc)
-        raise GeminiUnavailable(str(exc)) from exc
+    last_exc: Exception | None = None
+    for i, m in enumerate(model_chain(model)):
+        for attempt in range(2 if i == 0 else 1):
+            try:
+                resp = await asyncio.wait_for(
+                    client.aio.models.generate_content(model=m, contents=contents, config=config), timeout=45)
+                if m != _last_model:
+                    log.info("gemini answering with %s", m)
+                _last_model = m
+                return resp
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                if not _transient(exc):
+                    _failures.append(time.time())
+                    log.warning("gemini call failed (%s): %s", m, exc)
+                    raise GeminiUnavailable(str(exc)) from exc
+                log.info("gemini %s busy (%s), %s", m, str(exc)[:60], "retrying" if attempt == 0 and i == 0 else "trying next model")
+                if attempt == 0 and i == 0:
+                    await asyncio.sleep(1.5)
+    _failures.append(time.time())
+    log.warning("gemini unavailable on all models %s: %s", model_chain(model), last_exc)
+    raise GeminiUnavailable(str(last_exc))
 
 
 def status() -> dict:
     s = get_settings()
     return {"enabled": s.gemini_enabled, "mode": "vertex" if s.google_genai_use_vertexai else ("ai_studio" if s.gemini_api_key else "off"),
-            "model": s.gemini_model, "breaker_open": len(_failures) >= BREAKER_THRESHOLD}
+            "model": s.gemini_model, "fallbacks": model_chain()[1:], "last_model_used": _last_model,
+            "breaker_open": len(_failures) >= BREAKER_THRESHOLD}

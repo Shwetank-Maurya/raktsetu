@@ -174,3 +174,11 @@ async def test_public_summary_is_aggregate_only(client, db):
     body = r.json()
     assert r.status_code == 200 and body["facilities"] == 3 and body["data"] == "synthetic"
     assert not any(k in str(body) for k in ("Hospital One", "unit_ids", "phone"))
+
+
+async def test_public_summary_carries_network_facts_from_db(client, db):
+    body = (await client.get("/api/public/summary")).json()
+    assert body["network"]["by_subtype"] == {"large": 1, "small": 1, "bank": 1}
+    assert body["network"]["districts"] == ["District A", "District B"]
+    assert body["rules"]["RBC"]["min_life_on_arrival_h"] == 72 and body["rules"]["PLT"]["shelf_life_h"] == 120
+    assert set(body["demo_roles"]) == {"coordinator", "bank", "hospital", "admin"}

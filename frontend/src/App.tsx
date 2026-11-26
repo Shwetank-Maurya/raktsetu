@@ -7,6 +7,8 @@ import { DEFAULT_FLAGS, loadFlags, type Flags } from "./lib/firebase";
 import PublicLayout from "./components/PublicLayout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import PendingAccess from "./pages/PendingAccess";
+import Signup from "./pages/Signup";
 
 const CommandCentre = lazy(() => import("./pages/CommandCentre"));
 const RiskMap = lazy(() => import("./pages/RiskMap"));
@@ -24,6 +26,7 @@ const Donors = lazy(() => import("./pages/Donors"));
 const Inventory = lazy(() => import("./pages/Inventory"));
 const Articles = lazy(() => import("./pages/Articles"));
 const ArticlePage = lazy(() => import("./pages/ArticlePage"));
+const AccessRequests = lazy(() => import("./pages/AccessRequests"));
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -40,7 +43,22 @@ export default function App() {
             <Route path="articles" element={<Articles />} />
             <Route path="articles/:slug" element={<ArticlePage />} />
             <Route path="login" element={<Login />} />
+            <Route path="signup" element={<Signup />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    );
+  }
+  if (user.role === "pending") {
+    // Signed up but not approved yet: request access and wait; articles stay readable.
+    return (
+      <Suspense fallback={<Spinner />}>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="articles" element={<Articles />} />
+            <Route path="articles/:slug" element={<ArticlePage />} />
+            <Route path="*" element={<PendingAccess />} />
           </Route>
         </Routes>
       </Suspense>
@@ -66,7 +84,9 @@ export default function App() {
           <Route path="quality" element={<DataQuality />} />
           <Route path="articles" element={<Articles />} />
           <Route path="articles/:slug" element={<ArticlePage />} />
+          <Route path="access" element={<AccessRequests />} />
           <Route path="login" element={<Navigate to="/" replace />} />
+          <Route path="signup" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       </Routes>

@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     google_cloud_location: str = "global"
     gemini_model: str = "gemini-3.7-flash"
     gemini_model_lite: str = "gemini-3.5-flash-lite"
+    # Tried in order when the primary model is overloaded (503) or rate-limited (429).
+    gemini_model_fallbacks: str = "gemini-3.8-flash,gemini-3.5-flash,gemini-2.5-flash"
+    # Groq: second provider used when every Gemini model is unavailable (free tier, no card).
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
 
     # Maps / Routes / Calendar
     maps_server_key: str | None = None

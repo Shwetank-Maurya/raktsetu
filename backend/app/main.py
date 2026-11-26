@@ -12,7 +12,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import inventory, meta, ops, risk, transfers
+from app.api import access, inventory, meta, ops, risk, transfers
 from app.config import get_settings
 from app.domain.errors import DomainError
 
@@ -75,5 +75,5 @@ async def domain_error(_: Request, exc: DomainError) -> JSONResponse:
     return JSONResponse({"detail": exc.message, **exc.details}, status_code=exc.status_code)
 
 
-for r in (meta.router, inventory.router, risk.router, transfers.router, ops.router):
+for r in (meta.router, access.router, inventory.router, risk.router, transfers.router, ops.router):
     app.include_router(r)
