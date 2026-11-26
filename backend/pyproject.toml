@@ -1,0 +1,24 @@
+[project]
+name = "raktsetu-api"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = [
+  "B008",   # FastAPI Depends() in defaults is idiomatic
+  "E702",   # compact multi-assign in backtest accumulators
+  "S101",   # asserts in tests
+  "S311",   # numpy RNG is for simulation, not crypto
+  "S608",   # SQL is parameterised; table names are constants
+  "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106"]
+"scripts/*" = ["E402"]

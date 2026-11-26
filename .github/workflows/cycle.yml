@@ -1,0 +1,14 @@
+# Scheduler for Option A (Render): GitHub Actions cron calls the internal job with a shared token.
+# On Option B, Cloud Scheduler (infra/scheduler.sh) does this with OIDC instead; leave API_URL unset.
+name: run-cycle
+on:
+  schedule: [{ cron: "5 * * * *" }]
+  workflow_dispatch:
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    if: ${{ vars.API_URL != '' }}
+    steps:
+      - run: |
+          curl -fsS -X POST "${{ vars.API_URL }}/internal/jobs/world-tick?hours=1" -H "X-Internal-Token: ${{ secrets.INTERNAL_TOKEN }}"
+          curl -fsS -X POST "${{ vars.API_URL }}/internal/jobs/run-cycle" -H "X-Internal-Token: ${{ secrets.INTERNAL_TOKEN }}" --max-time 900

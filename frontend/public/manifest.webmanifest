@@ -1,0 +1,3 @@
+{ "name": "RaktSetu", "short_name": "RaktSetu", "start_url": "/", "display": "standalone",
+  "background_color": "#ffffff", "theme_color": "#9f1239",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }] }

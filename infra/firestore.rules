@@ -1,0 +1,23 @@
+rules_version = '2';
+// Firestore is a read-only live mirror for browsers. Only the backend (Admin SDK) writes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function network() { return request.auth.token.role in ['regional_coordinator', 'admin']; }
+    function ownFacility(fid) { return request.auth.token.facility_id == fid; }
+
+    match /alerts/{id} {
+      allow read: if signedIn() && (network() || ownFacility(resource.data.facility_id));
+      allow write: if false;
+    }
+    match /stock_summary/{fid} {
+      allow read: if signedIn() && (network() || ownFacility(int(fid)));
+      allow write: if false;
+    }
+    match /events/{kind} {           // change pings only ("stock changed"), no inventory data:
+      allow read: if true;           // readable by demo-token sessions too, so live refresh works for judges
+      allow write: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

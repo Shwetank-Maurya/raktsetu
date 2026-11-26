@@ -1,0 +1,22 @@
+# Cloud Build CI/CD: test against an ephemeral Postgres, build, push to Artifact Registry, deploy to Cloud Run.
+substitutions:
+  _REGION: asia-south1
+  _SERVICE: raktsetu-api
+steps:
+  - id: test
+    name: python:3.12-slim
+    dir: backend
+    entrypoint: bash
+    args: ["-c", "apt-get update -qq && apt-get install -y -qq libgomp1 postgresql >/dev/null && service postgresql start && su postgres -c \"psql -c \\\"CREATE USER raktsetu WITH SUPERUSER PASSWORD 'raktsetu'\\\"\" && pip install -q -r requirements-dev.txt && TEST_DATABASE_URL=postgresql://raktsetu:raktsetu@localhost:5432/raktsetu_test pytest -q && ruff check app tests scripts"]
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/raktsetu/api:$SHORT_SHA", "backend"]
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_REGION}-docker.pkg.dev/$PROJECT_ID/raktsetu/api:$SHORT_SHA"]
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args: ["run", "deploy", "${_SERVICE}", "--image", "${_REGION}-docker.pkg.dev/$PROJECT_ID/raktsetu/api:$SHORT_SHA", "--region", "${_REGION}"]
+images: ["${_REGION}-docker.pkg.dev/$PROJECT_ID/raktsetu/api:$SHORT_SHA"]
+options: { logging: CLOUD_LOGGING_ONLY }

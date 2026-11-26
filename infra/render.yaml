@@ -1,0 +1,20 @@
+# Option A (no credit card): FastAPI on Render free tier + Firebase Hosting (Spark) for the SPA.
+# Firebase Hosting cannot rewrite to Render, so the SPA calls the API URL set in VITE_API_BASE.
+services:
+  - type: web
+    name: raktsetu-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - { key: ENV, value: prod }
+      - { key: RUN_MIGRATIONS, value: "true" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: DATABASE_URL_DIRECT, sync: false }
+      - { key: DEMO_AUTH_SECRET, generateValue: true }
+      - { key: GEMINI_API_KEY, sync: false }
+      - { key: FIREBASE_PROJECT_ID, sync: false }
+      - { key: GOOGLE_CALENDAR_API_KEY, sync: false }
+      - { key: INTERNAL_TOKEN, generateValue: true }
+      - { key: CORS_ORIGINS, sync: false }

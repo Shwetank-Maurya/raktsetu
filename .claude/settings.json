@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/alembic revision *)",
+      "Bash(.venv/bin/alembic upgrade *)",
+      "Bash(time .venv/bin/python -m scripts.seed)",
+      "Bash(.venv/bin/python -)",
+      "Bash(.venv/bin/python -m scripts.seed)"
+    ]
+  }
+}
