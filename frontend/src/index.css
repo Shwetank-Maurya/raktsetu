@@ -7,7 +7,7 @@
   --color-ink: #18181b;
   --color-body: #3f3f46;
   --color-muted: #71717a;
-  --color-faint: #a1a1aa;
+  --color-faint: #6b6b75; /* >= 4.5:1 on white (WCAG AA) */
   --color-line: #e4e4e7;
   --color-line-soft: #f0f0f2;
   --color-canvas: #fafafa;

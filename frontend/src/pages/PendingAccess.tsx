@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock, MailCheck, ShieldCheck, XCircle } from "lucide-react";
 import { api } from "../api/client";
@@ -14,7 +14,9 @@ export default function PendingAccess() {
   const facs = useQuery({ queryKey: ["public-facilities"], queryFn: () => api.get("/api/public/facilities"), staleTime: 3_600_000 });
   const [role, setRole] = useState("hospital_user");
   const [fid, setFid] = useState("");
-  const [name, setName] = useState(user?.name && !user.name.includes("@") ? user.name : "");
+  const [name, setName] = useState("");
+  // The display name can arrive after first render (token refresh after sign-up); prefill once known.
+  useEffect(() => { if (!name && user?.name && !user.name.includes("@")) setName(user.name); }, [user?.name]); // eslint-disable-line react-hooks/exhaustive-deps
   const [note, setNote] = useState("");
   const [checkMsg, setCheckMsg] = useState<string | null>(null);
   const [checkError, setCheckError] = useState<unknown>(null);
